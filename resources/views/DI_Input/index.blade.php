@@ -6,9 +6,10 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.bootstrap5.min.css">
 
 <div class="container-fluid">
+     
     <div class="bg-white p-4 shadow rounded">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-4xl  text-gray">Data DI</h1>
+            <h1 class="text-5xl  text-dark">Data DI</h1>
             <a href="{{ route('deliveries.import.form') }}" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-2 rounded text-sm">
                 + Import Data From Excel
             </a>
@@ -43,40 +44,40 @@
             <table id="example" class="display" style="width: 100%">
                 <thead class="bg-dark-100">
                     <tr>
-                        <th class="border p-2 bg-dark text-white">No</th>
-                        <th class="border p-2 bg-dark text-white">DI No</th>
-                        <th class="border p-2 bg-dark text-white">Gate</th>
-                        <th class="border p-2 bg-dark text-white">PO Number</th>
-                        <th class="border p-2 bg-dark text-white">PO Item</th>
-                        <th class="border p-2 bg-dark text-white">Supplier ID</th>
-                        <th class="border p-2 bg-dark text-white">Supplier Desc</th>
-                        <th class="border p-2 bg-dark text-white">Supplier Part Number</th>
-                        <th class="border p-2 bg-dark text-white">Baan PartNumber</th>
-                        <th class="border p-2 bg-dark text-white">Visteon PartNumber</th>
-                        <th class="border p-2 bg-dark text-white">Supplier Part Number Desc</th>
-                        <th class="border p-2 bg-dark text-white">Qty</th>
-                        <th class="border p-2 bg-dark text-white">UOM</th>
-                        <th class="border p-2 bg-dark text-white">Critical Part</th>
-                        <th class="border p-2 bg-dark text-white">Flag Subcontracting</th>
-                        <th class="border p-2 bg-dark text-white">PO Status</th>
-                        <th class="border p-2 bg-dark text-white">Latest GR Date PO</th>
-                        <th class="border p-2 bg-dark text-white">DI Type</th>
-                        <th class="border p-2 bg-dark text-white">DI Status</th>
-                        <th class="border p-2 bg-dark text-white">DI Received Date</th>
-                        <th class="border p-2 bg-dark text-white">DI Received Time</th>
-                        <th class="border p-2 bg-dark text-white">DI Created Date</th>
-                        <th class="border p-2 bg-dark text-white">DI Created Time</th>
-                        <th class="border p-2 bg-dark text-white">DI No Original</th>
-                        <th class="border p-2 bg-dark text-white">DI No Split</th>
-                        <th class="border p-2 bg-dark text-white">DN No</th>
-                        <th class="border p-2 bg-dark text-white">Plant ID (DN)</th>
-                        <th class="border p-2 bg-dark text-white">Plant Desc (DN)</th>
-                        <th class="border p-2 bg-dark text-white">Supplier ID (DN)</th>
-                        <th class="border p-2 bg-dark text-white">Supplier Desc (DN)</th>
-                        <th class="border p-2 bg-dark text-white">Plant Supplier (DN)</th>
+                        <th class="border p-2 bg-black text-white">No</th>
+                        <th class="border p-2 bg-black text-white">DI No</th>
+                        <th class="border p-2 bg-black text-white">Gate</th>
+                        <th class="border p-2 bg-black text-white">PO Number</th>
+                        <th class="border p-2 bg-black text-white">PO Item</th>
+                        <th class="border p-2 bg-black text-white">Supplier ID</th>
+                        <th class="border p-2 bg-black text-white">Supplier Desc</th>
+                        <th class="border p-2 bg-black text-white">Supplier Part Number</th>
+                        <th class="border p-2 bg-black text-white">Baan PartNumber</th>
+                        <th class="border p-2 bg-black text-white">Visteon PartNumber</th>
+                        <th class="border p-2 bg-black text-white">Supplier Part Number Desc</th>
+                        <th class="border p-2 bg-black text-white">Qty</th>
+                        <th class="border p-2 bg-black text-white">UOM</th>
+                        <th class="border p-2 bg-black text-white">Critical Part</th>
+                        <th class="border p-2 bg-black text-white">Flag Subcontracting</th>
+                        <th class="border p-2 bg-black text-white">PO Status</th>
+                        <th class="border p-2 bg-black text-white">Latest GR Date PO</th>
+                        <th class="border p-2 bg-black text-white">DI Type</th>
+                        <th class="border p-2 bg-black text-white">DI Status</th>
+                        <th class="border p-2 bg-black text-white">DI Received Date</th>
+                        <th class="border p-2 bg-black text-white">DI Received Time</th>
+                        <th class="border p-2 bg-black text-white">DI Created Date</th>
+                        <th class="border p-2 bg-black text-white">DI Created Time</th>
+                        <th class="border p-2 bg-black text-white">DI No Original</th>
+                        <th class="border p-2 bg-black text-white">DI No Split</th>
+                        <th class="border p-2 bg-black text-white">DN No</th>
+                        <th class="border p-2 bg-black text-white">Plant ID (DN)</th>
+                        <th class="border p-2 bg-black text-white">Plant Desc (DN)</th>
+                        <th class="border p-2 bg-black text-white">Supplier ID (DN)</th>
+                        <th class="border p-2 bg-black text-white">Supplier Desc (DN)</th>
+                        <th class="border p-2 bg-black text-white">Plant Supplier (DN)</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody>     
                     @forelse($data as $DI)
                     <tr class="hover:bg-gray-50">
                          <td class="text-dark border p-2">{{ $DI->id ?? '-' }}</td>

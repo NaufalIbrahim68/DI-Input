@@ -2,7 +2,8 @@
 
 @section('content')
   <div class="max-w-7xl mx-auto px-4">
-    <h1 class="h3 mb-4 text-gray">Dashboard</h1>
+   <h1 class="h2 mb-4 fw-semibold text-dark">Dashboard</h1>
+
 
     <div class="bg-white p-6 rounded-xl shadow mb-6 mt-6">
 
@@ -14,11 +15,11 @@
     <div class="bg-white p-6 rounded-xl shadow mb-6 mt-6">
     <form method="GET" action="{{ route('dashboard') }}" class="mb-4">
       <label for="tanggal" class="text-black mr-2">Filter Tanggal:</label>
-      <input type="date" id="tanggal" name="tanggal" value="{{ request('tanggal') }}" class="border p-2 rounded">
+      <input type="date" id="tanggal" name="tanggal" value="{{ request('tanggal') }}" class="border p-2 rounded text-dark">
 
       <label for="supplier_part_number" class="text-black ml-4 mr-2">Supplier Part Number:</label>
       <input type="text" id="supplier_part_number" name="supplier_part_number"
-      value="{{ request('supplier_part_number') }}" class="border p-2 rounded">
+      value="{{ request('supplier_part_number') }}" class="border p-2 rounded text-dark">
 
       <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded ml-2">Filter</button>
       <a href="{{ route('dashboard') }}" class="bg-orange-500 text-white px-4 py-2 rounded ml-2">Reset</a>
