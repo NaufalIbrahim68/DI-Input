@@ -27,6 +27,11 @@ class DeliveryController extends Controller
         ]);
     }
 
+       public function show($id)
+{
+    $data = DiInputModel::findOrFail($id);
+    return response()->json($data);
+}
     public function import(Request $request)
     {
         $request->validate([
@@ -267,4 +272,7 @@ class SimpleArrayImport implements ToArray
     {
         return $array;
     }
+
+ 
+
 }

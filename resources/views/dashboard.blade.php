@@ -7,9 +7,26 @@
 
     <div class="bg-white p-6 rounded-xl shadow mb-6 mt-6">
 
+<!-- Dropdown untuk memilih tanggal chart -->
+     <div class="flex justify-end mb-4">
+  <div class="relative inline-block">
+    <select id="dateSelector" class="appearance-none border border-gray-300 rounded-lg pl-4 pr-10 py-2 bg-white shadow focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-800">
+  @foreach ($groupedChartData as $index => $group)
+    <option value="{{ $index }}">
+      {{ \Carbon\Carbon::parse($group['labels'][0])->format('d-m-Y') }} s/d {{ \Carbon\Carbon::parse(end($group['labels']))->format('d-m-Y') }}
+    </option>
+  @endforeach
+</select>
+    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+      <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414L10 13.414 5.293 8.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+      </svg>
+    </div>
+  </div>
+</div>
     <!-- Full-width Chart -->
     <div class="h-[500px] w-full flex justify-center items-center">
-      <canvas id="myChart" class="w-full h-full"></canvas>
+     <canvas id="myChart" class="w-full h-full drop-shadow-md rounded-xl"></canvas>
     </div>
     </div>
     <div class="bg-white p-6 rounded-xl shadow mb-6 mt-6">
@@ -79,85 +96,113 @@
 
     <!-- Inject PHP data into JavaScript variables -->
     <script>
-    window.chartConfig = {
-      labels: {!! json_encode($chartLabels) !!},
-      data: {!! json_encode($chartData) !!}
-    };
-    </script>
+  // Data dari controller
+  const chartConfig = @json($groupedChartData);
+  let chartInstance = null;
 
-    <!-- Chart Configuration -->
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const ctx = document.getElementById('myChart');
+  // Fungsi bantu konversi hex ke rgba
+  function hexToRgba(hex, alpha) {
+    const bigint = parseInt(hex.replace('#', ''), 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
 
-      new Chart(ctx, {
+  // Warna dasar untuk chart
+  const colors = [
+    '#f87171', // merah muda
+    '#facc15', // kuning
+    '#4ade80', // hijau
+    '#60a5fa', // biru
+    '#a78bfa', // ungu
+    '#f472b6', // pink
+    '#f97316', // oranye
+  ];
+
+  // Fungsi render chart
+  function renderChart(labels, data) {
+    const ctx = document.getElementById('myChart').getContext('2d');
+
+    // Hapus chart sebelumnya jika ada
+    if (chartInstance) {
+      chartInstance.destroy();
+    }
+
+    chartInstance = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: window.chartConfig.labels,
+        labels: labels,
         datasets: [{
-        label: 'Total Qty Per Tanggal:',
-        data: window.chartConfig.data,
-        backgroundColor: window.chartConfig.labels.map((_, i) => [
-          'rgba(255, 182, 193, 0.7)', // lightpink
-          'rgba(173, 216, 230, 0.7)', // lightblue
-          'rgba(255, 255, 153, 0.7)', // lightyellow
-          'rgba(144, 238, 144, 0.7)', // lightgreen
-          'rgba(221, 160, 221, 0.7)', // plum
-          'rgba(255, 204, 153, 0.7)', // peach
-          'rgba(224, 255, 255, 0.7)'  // lightcyan
-        ][i % 7]),
-
-        borderColor: window.chartConfig.labels.map((_, i) => [
-          'rgba(255, 105, 180, 1)',   // hotpink
-          'rgba(30, 144, 255, 1)',    // dodgerblue
-          'rgba(255, 215, 0, 1)',     // gold
-          'rgba(60, 179, 113, 1)',    // mediumseagreen
-          'rgba(186, 85, 211, 1)',    // mediumorchid
-          'rgba(255, 140, 0, 1)',     // darkorange
-          'rgba(64, 224, 208, 1)'     // turquoise
-        ][i % 7]),
-        borderWidth: 1
+          label: 'Total Qty',
+          data: data,
+          backgroundColor: labels.map((_, i) =>
+            hexToRgba(colors[i % colors.length], 0.3) // transparan lembut
+          ),
+          borderColor: labels.map((_, i) =>
+            hexToRgba(colors[i % colors.length], 0.6) // garis sedikit tajam
+          ),
+          borderWidth: 1,
+          hoverBackgroundColor: labels.map((_, i) =>
+            hexToRgba(colors[i % colors.length], 0.5) // saat hover
+          )
         }]
       },
       options: {
-  responsive: true,
-  maintainAspectRatio: false,
-  scales: {
-    y: {
-      beginAtZero: true,
-      ticks: {
-        color: '#000000' // warna angka di sumbu Y jadi hitam
-      },
-      title: {
-        display: true,
-        text: 'Qty',
-        color: '#000000'
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#000' },
+            title: {
+              display: true,
+              text: 'Qty',
+              color: '#000'
+            }
+          },
+          x: {
+            ticks: { color: '#000' },
+            title: {
+              display: true,
+              text: 'Tanggal',
+              color: '#000'
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: '#000'
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+          }
+        }
       }
-    },
-    x: {
-      ticks: {
-        color: '#000000' // warna label bawah (tanggal) jadi hitam
-      },
-      title: {
-        display: true,
-        text: 'Tanggal',
-        color: '#000000'
-      }
-    }
-  },
-  plugins: {
-    legend: {
-      labels: {
-        color: '#000000' // warna teks legend jadi hitam
-      }
-    },
-    title: {
-      display: false
-    }
-  }
-}
-
-      });
     });
-    </script>
+  }
+
+  // Jalankan saat halaman selesai dimuat
+  document.addEventListener('DOMContentLoaded', () => {
+    const selector = document.getElementById('dateSelector');
+    const defaultGroup = chartConfig[0];
+
+    if (defaultGroup) {
+      renderChart(defaultGroup.labels, defaultGroup.data);
+    }
+
+    selector.addEventListener('change', function () {
+      const index = this.value;
+      const selected = chartConfig[index];
+      if (selected) {
+        renderChart(selected.labels, selected.data);
+      }
+    });
+  });
+</script>
+
   @endsection
