@@ -13,16 +13,15 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class DeliveryController extends Controller
 {
-    // Constants untuk magic numbers
     const HEADER_ROWS_TO_SKIP = 5;
-    const MAX_EXECUTION_TIME = 600; // 10 menit
-    const MEMORY_LIMIT = '1024M'; // 1GB
-    const CHUNK_SIZE = 1000; // Process data in chunks
+    const MAX_EXECUTION_TIME = 600;
+    const MEMORY_LIMIT = '1024M';
+    const CHUNK_SIZE = 1000;
 
     public function index()
     {
         $data =  DiInputModel::all();
-           
+
         return view('DI_Input.index', [
             'data' => $data
         ]);
@@ -31,29 +30,24 @@ class DeliveryController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls,csv|max:51200' // Max 50MB
+            'file' => 'required|mimes:xlsx,xls,csv|max:51200'
         ]);
 
-        // Set execution limits
         ini_set('max_execution_time', self::MAX_EXECUTION_TIME);
         ini_set('memory_limit', self::MEMORY_LIMIT);
 
         try {
-            // Load Excel data using a simple array import
             $data = Excel::toArray(new SimpleArrayImport(), $request->file('file'));
 
             if (empty($data) || empty($data[0])) {
                 return back()->with('error', '❌ File kosong atau tidak dapat dibaca.');
             }
 
-            // Pre-load semua reference data untuk menghindari N+1 query
             $references = $this->loadReferences();
             Log::info("📚 Loaded " . $references->count() . " reference data");
 
-            // Process data
             $result = $this->processExcelData($data[0], $references);
 
-            // Return response with appropriate message
             return $this->buildResponse($result);
         } catch (\Exception $e) {
             Log::error("❌ Import failed: " . $e->getMessage());
@@ -61,12 +55,9 @@ class DeliveryController extends Controller
         }
     }
 
-    /**
-     * Pre-load semua reference data dengan optimized key
-     */
     private function loadReferences()
     {
-        return DiPartnumber::select('supplier_pn','baan_pn','visteon_pn')
+        return DiPartnumber::select('supplier_pn', 'baan_pn', 'visteon_pn')
             ->whereNotNull('supplier_pn')
             ->where('supplier_pn', '!=', '')
             ->get()
@@ -75,27 +66,20 @@ class DeliveryController extends Controller
             });
     }
 
-    /**
-     * Process Excel data in chunks untuk memory efficiency
-     */
     private function processExcelData(array $rows, $references)
     {
-        $importedCount = 0;
+        $createdCount = 0;
         $failedCount = 0;
         $failedRows = [];
-        $totalRows = count($rows);
 
-        // Process in chunks
         $chunks = array_chunk($rows, self::CHUNK_SIZE, true);
 
         foreach ($chunks as $chunk) {
             foreach ($chunk as $index => $row) {
-                // Skip header rows dan empty rows
                 if ($index <= self::HEADER_ROWS_TO_SKIP || $this->isEmptyRow($row)) {
                     continue;
                 }
 
-                // Validate required field
                 if (!$this->validateRequiredFields($row)) {
                     Log::warning("⚠️ Lewati baris $index karena field wajib kosong.");
                     $failedRows[] = $index + 1;
@@ -104,66 +88,64 @@ class DeliveryController extends Controller
                 }
 
                 try {
-                    $this->processRow($row, $references);
-                    $importedCount++;
+                    $status = $this->processRow($row, $references);
 
-                    // Log progress setiap 100 rows
-                    if ($importedCount % 100 === 0) {
-                        Log::info("📊 Progress: $importedCount/$totalRows rows processed");
+                    if ($status === 'created') {
+                        $createdCount++;
+                    } else {
+                        $failedCount++;
+                        $failedRows[] = $index + 1;
+                    }
+
+                    if (($createdCount + $failedCount) % 100 === 0) {
+                        Log::info("📊 Progress: " . ($createdCount + $failedCount) . "/" . count($rows) . " rows processed");
                     }
                 } catch (\Exception $e) {
                     $failedCount++;
                     $failedRows[] = $index + 1;
                     Log::error("❌ Gagal proses baris $index: " . $e->getMessage());
-                    continue;
                 }
             }
 
-            // Clear memory setelah setiap chunk
             if (function_exists('gc_collect_cycles')) {
                 gc_collect_cycles();
             }
         }
 
         return [
-            'imported' => $importedCount,
+            'created' => $createdCount,
             'failed' => $failedCount,
             'failed_rows' => $failedRows
         ];
     }
 
-    /**
-     * Process single row
-     */
     private function processRow(array $row, $references)
     {
-        // Normalisasi supplier part number
-        $supplierPN = $this->normalizePartNumber($row[6] ?? '');
+        $diNo = trim($row[0] ?? '');
 
-        // Cari reference data
-        $reference = $references->get($supplierPN);
-
-        if ($reference) {
-            Log::debug("✅ Reference found for PN: $supplierPN");
-        } else {
-            Log::debug("⚠️ No reference found for PN: $supplierPN");
+        if (empty($diNo) || strtolower($diNo) === 'di no') {
+            throw new \Exception("❌ DI No kosong atau tidak valid (mungkin header ikut terproses)");
         }
 
-        // Siapkan data untuk update/create
+        $supplierPN = $this->normalizePartNumber($row[6] ?? '');
+        $reference = $references->get($supplierPN);
+
+        $existing = DiInputModel::where('di_no', $diNo)->exists();
+
+        if ($existing) {
+            Log::info("⚠️ Data dengan DI No $diNo sudah ada, dianggap gagal.");
+            return 'duplicate';
+        }
+
         $updateData = $this->prepareUpdateData($row, $reference);
+        $updateData['di_no'] = $diNo;
 
-        // Save to database
-        DiInputModel::updateOrCreate(
-            ['di_no' => $row[0]],
-            $updateData
-        );
+        DiInputModel::create($updateData);
+        Log::debug("🆕 DiInput baru disimpan: $diNo");
 
-        Log::debug("✅ DiInput berhasil disimpan: " . $row[0]);
+        return 'created';
     }
 
-    /**
-     * Prepare data array for database update
-     */
     private function prepareUpdateData(array $row, $reference = null)
     {
         $updateData = [
@@ -196,7 +178,6 @@ class DeliveryController extends Controller
             'plant_supplier_dn' => $row[27] ?? null,
         ];
 
-        // Tambahkan reference data jika ada
         if ($reference) {
             if (!empty($reference->baan_pn)) {
                 $updateData['baan_pn'] = $reference->baan_pn;
@@ -209,21 +190,11 @@ class DeliveryController extends Controller
         return $updateData;
     }
 
-    /**
-     * Normalize part number untuk consistent matching
-     */
     private function normalizePartNumber($partNumber)
     {
-        if (empty($partNumber)) {
-            return '';
-        }
-
         return strtolower(str_replace([' ', '-', '_'], '', trim($partNumber)));
     }
 
-    /**
-     * Check if row is empty
-     */
     private function isEmptyRow(array $row)
     {
         return empty(array_filter($row, function ($value) {
@@ -231,81 +202,57 @@ class DeliveryController extends Controller
         }));
     }
 
-    /**
-     * Validate required fields
-     */
     private function validateRequiredFields(array $row)
     {
-        // Check di_no (required field)
-        return !empty($row[0]) && !empty(trim($row[0]));
+        $diNo = trim($row[0] ?? '');
+        return !empty($diNo) && strtolower($diNo) !== 'di no';
     }
 
-    /**
-     * Build response message based on import results
-     */
     private function buildResponse(array $result)
     {
-        $importedCount = $result['imported'];
-        $failedCount = $result['failed'];
+        $created = $result['created'];
+        $failed = $result['failed'];
         $failedRows = $result['failed_rows'];
 
-        if ($importedCount > 0 && $failedCount === 0) {
-            $message = "✅ Berhasil mengimpor $importedCount data!";
-            $alertType = 'success';
-        } elseif ($importedCount > 0 && $failedCount > 0) {
-            $failedRowsStr = implode(', ', array_slice($failedRows, 0, 10)); // Show max 10 failed rows
+        $messageParts = [];
+
+        if ($created > 0) {
+            $messageParts[] = "✅ $created data berhasil diimpor";
+        }
+
+        if ($failed > 0) {
+            $failedRowsStr = implode(', ', array_slice($failedRows, 0, 10));
             if (count($failedRows) > 10) {
                 $failedRowsStr .= '...';
             }
-            $message = "⚠️ Berhasil mengimpor $importedCount data. Tapi ada $failedCount baris gagal (baris: $failedRowsStr)";
-            $alertType = 'warning';
-        } elseif ($importedCount === 0 && $failedCount > 0) {
-            $message = "❌ Gagal mengimpor file. $failedCount baris gagal diproses.";
-            $alertType = 'error';
-        } else {
-            $message = "❌ File kosong atau tidak ada data yang bisa diproses.";
-            $alertType = 'error';
+            $messageParts[] = "❌ $failed gagal (baris: $failedRowsStr)";
         }
 
-        return back()->with($alertType, $message);
+        $fullMessage = implode(' | ', $messageParts);
+
+        if ($created > 0 && $failed === 0) {
+            return back()->with('success', $fullMessage);
+        } elseif ($created > 0 && $failed > 0) {
+            return back()->with('warning', $fullMessage);
+        } else {
+            return back()->with('error', '❌ Tidak ada data berhasil diimpor.');
+        }
     }
 
-    /**
-     * Parse quantity with better error handling
-     */
     private function parseQty($qty)
     {
-        if (empty($qty)) {
-            return 0;
-        }
-
-        // Handle different number formats
         $cleaned = preg_replace('/[^\d.,]/', '', $qty);
         $cleaned = str_replace(',', '.', $cleaned);
 
         return is_numeric($cleaned) ? (int) floor((float) $cleaned) : 0;
     }
 
-    /**
-     * Parse date with comprehensive format support
-     */
     private function parseDate($date)
     {
         try {
-            if (empty($date)) {
-                return null;
-            }
-
-            // Handle Excel serial date
-            if (is_numeric($date)) {
-                return Date::excelToDateTimeObject($date);
-            }
-
-            // Handle string dates
-            if (is_string($date)) {
-                return \Carbon\Carbon::parse($date);
-            }
-
+            if (empty($date)) return null;
+            if (is_numeric($date)) return Date::excelToDateTimeObject($date);
+            if (is_string($date)) return \Carbon\Carbon::parse($date);
             return null;
         } catch (\Exception $e) {
             Log::warning("⚠️ Tanggal tidak valid: " . json_encode($date) . " - Error: " . $e->getMessage());
@@ -314,9 +261,6 @@ class DeliveryController extends Controller
     }
 }
 
-/**
- * Simple import class for converting Excel to array
- */
 class SimpleArrayImport implements ToArray
 {
     public function array(array $array)

@@ -58,12 +58,13 @@ class DashboardController extends Controller
 
         // Data untuk chart
         $chartData = DiInputModel::selectRaw("
-            CONVERT(VARCHAR, di_received_date, 23) as tanggal,
-            SUM(ISNULL(qty, 0)) as total_qty
-        ")
-            ->groupBy('di_received_date')
-            ->orderBy('tanggal')
-            ->get();
+    CONVERT(VARCHAR, di_received_date, 23) as tanggal,
+    SUM(ISNULL(qty, 0)) as total_qty
+")
+    ->whereNotNull('di_received_date') 
+    ->groupBy('di_received_date')
+    ->orderBy('tanggal')
+    ->get();
 
         return view('dashboard', [
             'timeline' => $timeline,
