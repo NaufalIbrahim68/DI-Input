@@ -97,4 +97,15 @@ protected $keyType = 'string';
 
         return parent::setAttribute($key, $value);
     }
+
+    public function show($id)
+{
+    $data = DiInputModel::find($id);
+
+    if (!$data) {
+        return response()->json(['message' => 'Data not found'], 404);
+    }
+
+    return response()->json($data);
+}
 }

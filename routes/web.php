@@ -69,5 +69,5 @@ Route::middleware('auth')->group(function () {
     })->name('deliveries.import.form');
    Route::get('/deliveries/import', [DeliveryController::class, 'index'])->name('deliveries.import');
     Route::post('/deliveries/import', [DeliveryController::class, 'import'])->name('deliveries.import');
-  Route::get('/deliveries/{id}', [DeliveryController::class, 'show'])->name('deliveries.show');
+    Route::get('/deliveries/{id}', [DeliveryController::class, 'show']);
 });

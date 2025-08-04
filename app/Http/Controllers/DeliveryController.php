@@ -27,9 +27,14 @@ class DeliveryController extends Controller
         ]);
     }
 
-       public function show($id)
+     public function show($id)
 {
-    $data = DiInputModel::findOrFail($id);
+    $data = DB::table('di_input')->where('id', $id)->first();
+
+    if (!$data) {
+        return response()->json(['message' => 'Data not found'], 404);
+    }
+
     return response()->json($data);
 }
     public function import(Request $request)
@@ -154,34 +159,38 @@ class DeliveryController extends Controller
     private function prepareUpdateData(array $row, $reference = null)
     {
         $updateData = [
-            'gate' => $row[1] ?? null,
-            'po_number' => $row[2] ?? null,
-            'po_item' => $row[3] ?? null,
-            'supplier_id' => $row[4] ?? null,
-            'supplier_desc' => $row[5] ?? null,
-            'supplier_part_number' => $row[6] ?? null,
-            'supplier_part_number_desc' => $row[7] ?? null,
-            'qty' => $this->parseQty($row[8] ?? 0),
-            'uom' => $row[9] ?? null,
-            'critical_part' => $row[10] ?? null,
-            'flag_subcontracting' => $row[11] ?? null,
-            'po_status' => $row[12] ?? null,
-            'latest_gr_date_po' => $this->parseDate($row[13] ?? null),
-            'di_type' => $row[14] ?? null,
-            'di_status' => $row[15] ?? null,
-            'di_received_date' => $this->parseDate($row[16] ?? null),
-            'di_received_time' => $row[17] ?? null,
-            'di_created_date' => $this->parseDate($row[18] ?? null),
-            'di_created_time' => $row[19] ?? null,
-            'di_no_original' => $row[20] ?? null,
-            'di_no_split' => $row[21] ?? null,
-            'dn_no' => $row[22] ?? null,
-            'plant_id_dn' => $row[23] ?? null,
-            'plant_desc_dn' => $row[24] ?? null,
-            'supplier_id_dn' => $row[25] ?? null,
-            'supplier_desc_dn' => $row[26] ?? null,
-            'plant_supplier_dn' => $row[27] ?? null,
-        ];
+        'di_no' => $row[0] ?? null,
+        'gate' => $row[1] ?? null,
+        'po_number' => $row[2] ?? null,
+        'po_item' => $row[3] ?? null,
+        'supplier_id' => $row[4] ?? null,
+        'supplier_desc' => $row[5] ?? null,
+        'supplier_part_number' => $row[6] ?? null,
+        'baan_pn' => $row[7] ?? null,
+        'visteon_pn' => $row[8] ?? null,
+        'supplier_part_number_desc' => $row[9] ?? null,
+        'qty' => $this->parseQty($row[10] ?? 0),
+        'uom' => $row[11] ?? null,
+        'critical_part' => $row[12] ?? null,
+        'flag_subcontracting' => $row[13] ?? null,
+        'po_status' => $row[14] ?? null,
+        'latest_gr_date_po' => $this->parseDate($row[15] ?? null),
+        'di_type' => $row[16] ?? null,
+        'di_status' => $row[17] ?? null,
+        'di_received_date' => $this->parseDate($row[18] ?? null),
+        'di_received_time' => $row[19] ?? null,
+        'di_created_date' => $this->parseDate($row[20] ?? null),
+        'di_created_time' => $row[21] ?? null,
+        'di_no_original' => $row[22] ?? null,
+        'di_no_split' => $row[23] ?? null,
+        'dn_no' => $row[24] ?? null,
+        'plant_id_dn' => $row[25] ?? null,
+        'plant_desc_dn' => $row[26] ?? null,
+        'supplier_id_dn' => $row[27] ?? null,
+        'supplier_desc_dn' => $row[28] ?? null,
+        'plant_supplier_dn' => $row[29] ?? null,
+    ];
+
 
         if ($reference) {
             if (!empty($reference->baan_pn)) {
@@ -272,7 +281,4 @@ class SimpleArrayImport implements ToArray
     {
         return $array;
     }
-
- 
-
 }
