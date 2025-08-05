@@ -9,7 +9,7 @@ class Delivery extends Model
 {
     use HasFactory;
 
-    protected $table = 'di_input'; // sesuaikan dengan nama tabel di DB
+    protected $table = 'di_input';
 
     protected $fillable = [
     'di_no', 'gate', 'po_number', 'po_item', 'supplier_id', 'supplier_desc',

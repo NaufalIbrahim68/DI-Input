@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
-class LoginController extends Controller  // <-- pastikan ini ada
+class LoginController extends Controller  
 {
     public function showLoginForm()
     {

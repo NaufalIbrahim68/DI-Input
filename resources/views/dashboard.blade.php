@@ -80,13 +80,13 @@
       <tbody>
         @foreach ($timeline as $item)
       <tr class="hover:bg-gray-50">
-      <td class="text-black border px-4 py-2">
+      <td class="text-dark border px-4 py-2">
         {{ \Carbon\Carbon::parse($item->di_received_date)->format('d-m-Y') }}</td>
-      <td class="text-black border p-2">{{ $item->di_no }}</td>
-      <td class="text-black border p-2">{{ $item->qty }}</td>
-      <td class="text-black border p-2">{{ $item->supplier_part_number }}</td>
-      <td class="text-black border p-2">{{ $item->baan_pn }}</td>
-      <td class="text-black border p-2">{{ $item->visteon_pn }}</td>
+      <td class="text-dark border p-2">{{ $item->di_no }}</td>
+      <td class="text-dark border p-2">{{ $item->qty }}</td>
+      <td class="text-dark border p-2">{{ $item->supplier_part_number }}</td>
+      <td class="text-dark border p-2">{{ $item->baan_pn }}</td>
+      <td class="text-dark border p-2">{{ $item->visteon_pn }}</td>
       </tr>
       @endforeach
       </tbody>
