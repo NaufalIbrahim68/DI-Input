@@ -11,20 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('di_input', function (Blueprint $table) {
-            $table->id(); // auto-increment primary key
-            $table->string('di_no')->nullable(); // DI Number
+        Schema::create('ds_input', function (Blueprint $table) {
+            $table->string('ds_number')->primary();
             $table->string('gate')->nullable();
-            $table->string('po_number')->nullable();
             $table->string('supplier_part_number')->nullable();
-            $table->string('baan_pn')->nullable(); // opsional dari join
-            $table->string('visteon_pn')->nullable(); // opsional dari join
-            $table->string('supplier_part_number_desc')->nullable();
             $table->integer('qty')->nullable();
             $table->string('di_type')->nullable();
+            $table->string('di_status')->nullable();
             $table->date('di_received_date')->nullable();
-            $table->string('di_received_time')->nullable();
-            $table->timestamps(); // created_at & updated_at
+            $table->time('di_received_time')->nullable();
+            $table->timestamps();
         });
     }
 
@@ -33,7 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('di_input');
+        Schema::dropIfExists('ds_input');
     }
 };
-

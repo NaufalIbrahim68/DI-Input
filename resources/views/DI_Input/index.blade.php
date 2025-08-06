@@ -47,10 +47,15 @@
                         <tr>
                             <th class="border p-2 bg-black text-white">No</th>
                             <th class="border p-2 bg-black text-white">DI No</th>
+                            <th class="border p-2 bg-black text-white">Gate</th>
                             <th class="border p-2 bg-black text-white">Supplier Part Number</th>
+                            <th class="border p-2 bg-black text-white">BAAN PN</th>
+                            <th class="border p-2 bg-black text-white">Visteon PN</th>
+                            <th class="border p-2 bg-black text-white">Part Desc</th>
                             <th class="border p-2 bg-black text-white">Qty</th>
+                            <th class="border p-2 bg-black text-white">DI Type</th>
                             <th class="border p-2 bg-black text-white">DI Received Date</th>
-                            <th class="border p-2 bg-black text-white">Detail</th> <!-- tombol lihat detail -->
+                            <th class="border p-2 bg-black text-white">DI Received Time</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -58,102 +63,88 @@
                             <tr>
                                 <td class="text-dark border p-2">{{ $index + 1 }}</td>
                                 <td class="text-dark border p-2">{{ $DI->di_no ?? '-' }}</td>
+                                <td class="text-dark border p-2">{{ $DI->gate ?? '-' }}</td>
                                 <td class="text-dark border p-2">{{ $DI->supplier_part_number ?? '-' }}</td>
+                                <td class="text-dark border p-2">{{ $DI->baan_pn ?? '-' }}</td>
+                                <td class="text-dark border p-2">{{ $DI->visteon_pn ?? '-' }}</td>
+                                <td class="text-dark border p-2">{{ $DI->supplier_part_number_desc ?? '-' }}</td>
                                 <td class="text-dark border p-2">{{ $DI->qty ?? '-' }}</td>
+                                <td class="text-dark border p-2">{{ $DI->di_type ?? '-' }}</td>
                                 <td class="text-dark border p-2">
-                                    {{ \Carbon\Carbon::parse($DI->di_received_date)->format('d-m-Y') }}</td>
-                                <td class="text-dark border p-2">
-                                    <button onclick="showDetail({{ $DI->id }})"
-                                        class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-3 rounded">
-                                        Detail
-                                    </button>
+                                    {{ $DI->di_received_date_string ?? '-' }}
                                 </td>
+
+                                <td class="text-dark border p-2">{{ $DI->di_received_time ?? '-' }}</td>
                             </tr>
                         @endforeach
                     </tbody>
-
                 </table>
-                <!-- Modal -->
-                <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-                    <div class="bg-white p-6 rounded shadow max-w-3xl w-full overflow-y-auto max-h-[80vh]">
-                        <h2 class="text-xl text-dark font-bold mb-4">Detail Data DI</h2>
-                        <div id="modalContent" class="text-dark">
-                            <!-- Konten akan diisi dengan JS -->
-                        </div>
-                        <div class="text-right mt-4">
-                            <button onclick="closeModal()" class="bg-blue-500 text-white px-4 py-2 rounded">Tutup</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- jQuery & DataTables -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
+                <!-- jQuery & DataTables -->
+                <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+                <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
 
-    <!-- Inisialisasi DataTables -->
-    <script>
-        $(document).ready(function () {
-            $('#example').DataTable({
-                "columnDefs": [
-                    { "defaultContent": "", "targets": "_all" }
-                ],
-                "pageLength": 25,
-                "responsive": true,
-                "scrollX": true
-            });
-        });
+                <!-- Inisialisasi DataTables -->
+                <script>
+                    $(document).ready(function () {
+                        $('#example').DataTable({
+                            "columnDefs": [
+                                { "defaultContent": "", "targets": "_all" }
+                            ],
+                            "pageLength": 25,
+                            "responsive": true,
+                            "scrollX": true
+                        });
+                    });
 
-    </script>
+                </script>
 
 
-    {{-- Detail Tabel --}}
-    <script>
-        function showDetail(id) {
-            fetch(`/deliveries/${id}`)
-                .then(res => res.json())
-                .then(data => {
-                    console.log(`📦 Data dari ID ${id}:`, data);
+                {{-- Detail Tabel --}}
+                <script>
+                    function showDetail(id) {
+                        fetch(`/deliveries/${id}`)
+                            .then(res => res.json())
+                            .then(data => {
+                                console.log(`📦 Data dari ID ${id}:`, data);
 
 
-                    if (!data || typeof data !== 'object') {
-                        alert("❌ Data tidak valid atau tidak ditemukan.");
-                        return;
+                                if (!data || typeof data !== 'object') {
+                                    alert("❌ Data tidak valid atau tidak ditemukan.");
+                                    return;
+                                }
+
+                                let html = '<table class="table-auto w-full">';
+                                for (const key in data) {
+                                    if (!data.hasOwnProperty(key)) continue;
+
+                                    let label = key.replace(/_/g, ' ');
+                                    let value = data[key];
+
+                                    html += `
+                      <tr>
+                        <td class="font-semibold p-2 border">${label}</td>
+                        <td class="p-2 border">${value ?? '-'}</td>
+                      </tr>`;
+                                }
+                                html += '</table>';
+
+                                document.getElementById('modalContent').innerHTML = html;
+                                document.getElementById('detailModal').classList.remove('hidden');
+                                document.getElementById('detailModal').classList.add('flex');
+                            })
+                            .catch(err => {
+                                console.error("❌ Error saat fetch:", err);
+                                alert("❌ Gagal mengambil detail.");
+                            });
                     }
 
-                    let html = '<table class="table-auto w-full">';
-                    for (const key in data) {
-                        if (!data.hasOwnProperty(key)) continue;
 
-                        let label = key.replace(/_/g, ' ');
-                        let value = data[key];
-
-                        html += `
-              <tr>
-                <td class="font-semibold p-2 border">${label}</td>
-                <td class="p-2 border">${value ?? '-'}</td>
-              </tr>`;
+                    function closeModal() {
+                        document.getElementById('detailModal').classList.remove('flex');
+                        document.getElementById('detailModal').classList.add('hidden');
                     }
-                    html += '</table>';
-
-                    document.getElementById('modalContent').innerHTML = html;
-                    document.getElementById('detailModal').classList.remove('hidden');
-                    document.getElementById('detailModal').classList.add('flex');
-                })
-                .catch(err => {
-                    console.error("❌ Error saat fetch:", err);
-                    alert("❌ Gagal mengambil detail.");
-                });
-        }
-
-
-        function closeModal() {
-            document.getElementById('detailModal').classList.remove('flex');
-            document.getElementById('detailModal').classList.add('hidden');
-        }
-    </script>
+                </script>
 
 
 @endsection

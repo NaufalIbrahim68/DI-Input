@@ -137,7 +137,7 @@ class DeliveryController extends Controller
             throw new \Exception("❌ DI No kosong atau tidak valid (mungkin header ikut terproses)");
         }
 
-        $supplierPN = $this->normalizePartNumber($row[6] ?? '');
+        $supplierPN = $this->normalizePartNumber($row[3] ?? '');
         $reference = $references->get($supplierPN);
 
         $existing = DiInputModel::where('di_no', $diNo)->exists();
@@ -156,53 +156,32 @@ class DeliveryController extends Controller
         return 'created';
     }
 
-    private function prepareUpdateData(array $row, $reference = null)
-    {
-        $updateData = [
+  private function prepareUpdateData(array $row, $reference = null)
+{
+    $updateData = [
         'di_no' => $row[0] ?? null,
         'gate' => $row[1] ?? null,
         'po_number' => $row[2] ?? null,
-        'po_item' => $row[3] ?? null,
-        'supplier_id' => $row[4] ?? null,
-        'supplier_desc' => $row[5] ?? null,
-        'supplier_part_number' => $row[6] ?? null,
-        'baan_pn' => $row[7] ?? null,
-        'visteon_pn' => $row[8] ?? null,
-        'supplier_part_number_desc' => $row[9] ?? null,
-        'qty' => $this->parseQty($row[10] ?? 0),
-        'uom' => $row[11] ?? null,
-        'critical_part' => $row[12] ?? null,
-        'flag_subcontracting' => $row[13] ?? null,
-        'po_status' => $row[14] ?? null,
-        'latest_gr_date_po' => $this->parseDate($row[15] ?? null),
-        'di_type' => $row[16] ?? null,
-        'di_status' => $row[17] ?? null,
-        'di_received_date' => $this->parseDate($row[18] ?? null),
-        'di_received_time' => $row[19] ?? null,
-        'di_created_date' => $this->parseDate($row[20] ?? null),
-        'di_created_time' => $row[21] ?? null,
-        'di_no_original' => $row[22] ?? null,
-        'di_no_split' => $row[23] ?? null,
-        'dn_no' => $row[24] ?? null,
-        'plant_id_dn' => $row[25] ?? null,
-        'plant_desc_dn' => $row[26] ?? null,
-        'supplier_id_dn' => $row[27] ?? null,
-        'supplier_desc_dn' => $row[28] ?? null,
-        'plant_supplier_dn' => $row[29] ?? null,
+        'supplier_part_number' => $row[3] ?? null,
+        'supplier_part_number_desc' => $row[4] ?? null,
+        'qty' => $this->parseQty($row[5] ?? 0),
+        'di_type' => $row[6] ?? null,
+         'di_received_date_string' => \Carbon\Carbon::parse($row[7])->format('d-M-Y'),
+        'di_received_time' => $row[8] ?? null,
+       
     ];
 
-
-        if ($reference) {
-            if (!empty($reference->baan_pn)) {
-                $updateData['baan_pn'] = $reference->baan_pn;
-            }
-            if (!empty($reference->visteon_pn)) {
-                $updateData['visteon_pn'] = $reference->visteon_pn;
-            }
+    if ($reference) {
+        if (!empty($reference->baan_pn)) {
+            $updateData['baan_pn'] = $reference->baan_pn;
         }
-
-        return $updateData;
+        if (!empty($reference->visteon_pn)) {
+            $updateData['visteon_pn'] = $reference->visteon_pn;
+        }
     }
+
+    return $updateData;
+}
 
     private function normalizePartNumber($partNumber)
     {
@@ -259,19 +238,6 @@ class DeliveryController extends Controller
         $cleaned = str_replace(',', '.', $cleaned);
 
         return is_numeric($cleaned) ? (int) floor((float) $cleaned) : 0;
-    }
-
-    private function parseDate($date)
-    {
-        try {
-            if (empty($date)) return null;
-            if (is_numeric($date)) return Date::excelToDateTimeObject($date);
-            if (is_string($date)) return \Carbon\Carbon::parse($date);
-            return null;
-        } catch (\Exception $e) {
-            Log::warning("⚠️ Tanggal tidak valid: " . json_encode($date) . " - Error: " . $e->getMessage());
-            return null;
-        }
     }
 }
 

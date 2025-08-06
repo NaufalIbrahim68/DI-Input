@@ -26,25 +26,25 @@ class DashboardController extends Controller
         $query = DiInputModel::query();
 
         if ($tanggal) {
-            $query->whereDate('di_received_date', $tanggal);
+            $query->whereDate('di_received_date_string', $tanggal);
         }
 
         if ($supplierPartNumber) {
             $query->whereRaw("REPLACE(supplier_part_number, ' ', '') LIKE ?", ['%' . str_replace(' ', '', $supplierPartNumber) . '%']);
         }
 
-        $query->orderByDesc('di_received_date');
+        $query->orderByDesc('di_received_date_string');
 
         $timeline = (!$tanggal && !$supplierPartNumber) ? $query->take(5)->get() : $query->get();
         $totalQty = $timeline->sum('qty');
 
         // Ambil semua data untuk chart
         $fullChartData = DiInputModel::selectRaw("
-            CONVERT(VARCHAR, di_received_date, 23) as tanggal,
+            CONVERT(VARCHAR, di_received_date_string, 23) as tanggal,
             SUM(ISNULL(qty, 0)) as total_qty
         ")
-        ->whereNotNull('di_received_date')
-        ->groupBy('di_received_date')
+        ->whereNotNull('di_received_date_string')
+        ->groupBy('di_received_date_string')
         ->orderBy('tanggal')
         ->get();
 
