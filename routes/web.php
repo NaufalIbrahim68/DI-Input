@@ -1,73 +1,86 @@
 <?php
 
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\DiInputController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\DeliveryController;
+
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DiInputController;
+use App\Http\Controllers\DeliveryController;
+use App\Http\Controllers\DsInputController;
 
-Route::get('/cek-baan', function () {
-    $data = DB::table('di_input')
-        ->whereNotNull('baan_pn')
-        ->orderBy('di_created_date', 'desc')
-        ->first();
-
-    
-});
-
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
-*/
-// Login
+// ========================================
+// 🔐 AUTH ROUTES
+// ========================================
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-// Register
 Route::get('/register', [RegisterController::class, 'showRegisterForm'])->name('register');
 Route::post('/register', [RegisterController::class, 'register']);
-
 
 Route::get('/', function () {
     return view('auth.login');
 });
-Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
-});
 
-// Dashboard - hanya untuk user yang sudah login
-
+// ========================================
+// 🔒 PROTECTED ROUTES (REQUIRES LOGIN)
+// ========================================
 Route::middleware('auth')->group(function () {
 
-    // Dashboard
-  Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
+    // ===============================
+    // 📊 DASHBOARD
+    // ===============================
+    Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
 
-    // DI Input
-    Route::get('/DI_Input', [DiInputController::class, 'index'])->name('DI_Input.index');
-    Route::get('/DI_Input/create', [DiInputController::class, 'create'])->name('DI_Input.form');
-    Route::post('/DI_Input/store', [DiInputController::class, 'store'])->name('DI_Input.store');
-    Route::delete('/DI_Input/{id}', [DiInputController::class, 'destroy'])->name('DI_Input.destroy');
-    Route::get('/di_input/{id}/edit', [DiInputController::class, 'edit'])->name('di_input.edit');
-    Route::put('/di_input/{id}', [DiInputController::class, 'update'])->name('di_input.update');
-    Route::post('/di-input/import', [DiInputController::class, 'import'])->name('di-input.import');
+    // ===============================
+    // 📦 DI INPUT
+    // ===============================
+    Route::prefix('DI_Input')->name('DI_Input.')->group(function () {
+        Route::get('/', [DiInputController::class, 'index'])->name('index');
+        Route::get('/create', [DiInputController::class, 'create'])->name('form');
+        Route::post('/store', [DiInputController::class, 'store'])->name('store');
+        Route::delete('/{id}', [DiInputController::class, 'destroy'])->name('destroy');
+        Route::get('/{id}/edit', [DiInputController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [DiInputController::class, 'update'])->name('update');
+        Route::post('/import', [DiInputController::class, 'import'])->name('import');
+    });
 
-    // Delivery (Data Excel DI)
-    Route::get('/deliveries', [DeliveryController::class, 'index'])->name('deliveries.index');
-    Route::get('/deliveries/import-form', function () {
-        return view('deliveries.import');
-    })->name('deliveries.import.form');
-   Route::get('/deliveries/import', [DeliveryController::class, 'index'])->name('deliveries.import');
-    Route::post('/deliveries/import', [DeliveryController::class, 'import'])->name('deliveries.import');
-    Route::get('/deliveries/{id}', [DeliveryController::class, 'show']);
+    // ===============================
+    // 📤 DELIVERY (Import Excel DI)
+    // ===============================
+    Route::prefix('deliveries')->name('deliveries.')->group(function () {
+        Route::get('/', [DeliveryController::class, 'index'])->name('index');
+        Route::get('/import-form', function () {
+            return view('deliveries.import');
+        })->name('import.form');
+        Route::get('/import', [DeliveryController::class, 'index'])->name('import.index'); // Optional route
+        Route::post('/import', [DeliveryController::class, 'import'])->name('import.submit');
+        Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');
+    });
+
+    // ===============================
+    // 🗓️ DS INPUT (Delivery Schedule)
+    // ===============================
+    Route::prefix('ds-input')->name('ds_input.')->group(function () {
+        Route::get('/', [DsInputController::class, 'index'])->name('index');
+        // Tambahkan jika ada store/import:
+        // Route::post('/', [DsInputController::class, 'store'])->name('store');
+    });
+
+    // ===============================
+    // 🔍 CEK BAAN (Testing Route)
+    // ===============================
+    Route::get('/cek-baan', function () {
+        $data = DB::table('di_input')
+            ->whereNotNull('baan_pn')
+            ->orderBy('di_created_date', 'desc')
+            ->first();
+
+        return response()->json($data); // atau return view('cek_baan', compact('data'));
+    })->name('cek_baan');
+
+
+    
 });

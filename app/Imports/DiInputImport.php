@@ -47,6 +47,7 @@ class DiInputImport implements ToCollection, WithHeadingRow
                     Log::warning("❌ No Reference Found for: $originalSupplierPN");
                 }
 
+                // Simpan ke di_input
                 $baseData = [
                     'gate' => $row['gate'],
                     'po_number' => $row['po_number'],
@@ -79,10 +80,27 @@ class DiInputImport implements ToCollection, WithHeadingRow
                     'visteon_pn' => $visteonPN,
                 ];
 
-                $di = DiInputModel::updateOrCreate(
+                DiInputModel::updateOrCreate(
                     ['di_no' => $row['di_no']],
                     $baseData
                 );
+
+                // Generate dan simpan ke ds_input
+                $dsNumber = $this->generateDsNumber();
+
+                DB::table('ds_input')->insert([
+                    'ds_number' => $dsNumber,
+                    'gate' => $row['gate'],
+                    'supplier_part_number' => $originalSupplierPN,
+                    'qty' => $this->parseQty($row['qty']),
+                    'di_type' => $row['di_type'],
+                    'di_status' => $row['di_status'],
+                    'di_received_date' => $this->parseDate($row['di_received_date']),
+                    'di_received_time' => $row['di_received_time'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                    'flag' => null,
+                ]);
 
                 $importedCount++;
             } catch (\Exception $e) {
@@ -118,5 +136,27 @@ class DiInputImport implements ToCollection, WithHeadingRow
             Log::warning("⚠️ Invalid date: " . json_encode($date));
             return null;
         }
+    }
+
+    private function generateDsNumber()
+    {
+        $today = now()->format('Ymd');
+        $prefix = "DS-{$today}-";
+
+        $last = DB::table('ds_input')
+            ->whereDate('created_at', now()->toDateString())
+            ->where('ds_number', 'like', "$prefix%")
+            ->orderByDesc('ds_number')
+            ->value('ds_number');
+
+        if ($last) {
+            $lastIncr = (int) substr($last, -4);
+            $nextIncr = $lastIncr + 1;
+        } else {
+            $nextIncr = 1;
+        }
+
+        $formattedIncr = str_pad($nextIncr, 4, '0', STR_PAD_LEFT);
+        return $prefix . $formattedIncr;
     }
 }

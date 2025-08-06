@@ -17,6 +17,7 @@ class DiInputModel extends Model
 
     protected $fillable = [
         'di_no',
+        'ds_number',
         'gate',
         'po_number',
         'supplier_part_number',
@@ -25,6 +26,8 @@ class DiInputModel extends Model
         'supplier_part_number_desc',
         'qty',
         'di_type',
+        'di_status',
+        'di_received_date',
         'di_received_time',
         'di_received_date_string',
     ];
@@ -34,9 +37,9 @@ class DiInputModel extends Model
         'updated_at',
     ];
 
-    public $timestamps = true; // gunakan true karena ada created_at & updated_at
+    public $timestamps = true;
 
     protected $casts = [
-        // 'di_received_date' => 'datetime',
+        'di_received_date' => 'date',
     ];
 }
