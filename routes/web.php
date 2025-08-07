@@ -60,12 +60,18 @@ Route::middleware('auth')->group(function () {
         Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');
     });
 
-    // ===============================
-    // 🗓️ DS INPUT (Delivery Schedule)
-    // ===============================
-    Route::prefix('ds-input')->name('ds_input.')->group(function () {
-        Route::get('/', [DsInputController::class, 'index'])->name('index');
-        // Tambahkan jika ada store/import:
+   // ===============================
+// 🗓️ DS INPUT (Delivery Schedule)
+// ===============================
+Route::prefix('ds-input')->name('ds_input.')->group(function () {
+    Route::get('/', [DsInputController::class, 'index'])->name('index');
+
+    // Resource tanpa prefix tambahan (langsung ke controller)
+    Route::get('/create', [DsInputController::class, 'create'])->name('create');
+    Route::post('/', [DsInputController::class, 'store'])->name('store');
+    Route::get('/{ds_number}/edit', [DsInputController::class, 'edit'])->name('edit');
+    Route::put('/{ds_number}', [DsInputController::class, 'update'])->name('update');
+    Route::delete('/{ds_number}', [DsInputController::class, 'destroy'])->name('destroy');
         // Route::post('/', [DsInputController::class, 'store'])->name('store');
     });
 

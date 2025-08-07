@@ -9,6 +9,7 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
+use Illuminate\Support\Facades\DB;
 
 class DeliveryImport implements ToModel, WithHeadingRow, WithChunkReading
 {
@@ -84,4 +85,24 @@ class DeliveryImport implements ToModel, WithHeadingRow, WithChunkReading
             return null;
         }
     }
+
+    private function normalizeSupplierPN($partNumber)
+{
+    return strtolower(str_replace([' ', '-', '–', '_'], '', $partNumber));
+}
+
+private function generateDsNumber()
+{
+    $today = now()->format('Ymd');
+    $prefix = "DS-{$today}-";
+
+    $last = DB::table('ds_input')
+        ->whereDate('created_at', now()->toDateString())
+        ->where('ds_number', 'like', "$prefix%")
+        ->orderByDesc('ds_number')
+        ->value('ds_number');
+
+    $nextIncr = $last ? ((int)substr($last, -4)) + 1 : 1;
+    return $prefix . str_pad($nextIncr, 4, '0', STR_PAD_LEFT);
+}
 }

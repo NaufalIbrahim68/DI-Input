@@ -20,23 +20,24 @@ class DeliveryController extends Controller
 
     public function index()
     {
-        $data =  DiInputModel::all();
+        $data = DiInputModel::all();
 
         return view('DI_Input.index', [
             'data' => $data
         ]);
     }
 
-     public function show($id)
-{
-    $data = DB::table('di_input')->where('id', $id)->first();
+    public function show($id)
+    {
+        $data = DB::table('di_input')->where('id', $id)->first();
 
-    if (!$data) {
-        return response()->json(['message' => 'Data not found'], 404);
+        if (!$data) {
+            return response()->json(['message' => 'Data not found'], 404);
+        }
+
+        return response()->json($data);
     }
 
-    return response()->json($data);
-}
     public function import(Request $request)
     {
         $request->validate([
@@ -140,48 +141,68 @@ class DeliveryController extends Controller
         $supplierPN = $this->normalizePartNumber($row[3] ?? '');
         $reference = $references->get($supplierPN);
 
-        $existing = DiInputModel::where('di_no', $diNo)->exists();
-
-        if ($existing) {
-            Log::info("⚠️ Data dengan DI No $diNo sudah ada, dianggap gagal.");
-            return 'duplicate';
-        }
-
         $updateData = $this->prepareUpdateData($row, $reference);
         $updateData['di_no'] = $diNo;
 
-        DiInputModel::create($updateData);
-        Log::debug("🆕 DiInput baru disimpan: $diNo");
+        // cek duplikasi
+        $existing = DiInputModel::where('di_no', $diNo)->exists();
 
+        if (!$existing) {
+            DiInputModel::create($updateData);
+            Log::debug("🆕 DiInput baru disimpan: $diNo");
+        } else {
+            Log::info("⚠️ DI No $diNo sudah ada, tapi tetap dilanjut insert ke ds_input.");
+        }
+
+        // tetap insert ke ds_input
+       try {
+    DB::table('ds_input')->insert([
+        'ds_number' => $this->generateDsNumber(),
+        'gate' => $row[1] ?? null,
+        'supplier_part_number' => $row[3] ?? null,
+        'qty' => $this->parseQty($row[5] ?? 0),
+        'di_type' => $row[6] ?? null,
+        'di_status' => null,
+        'di_received_date' => !empty($row[7]) ? \Carbon\Carbon::parse($row[7]) : null,
+        'di_received_time' => $row[8] ?? null,
+        'created_at' => now(),
+        'updated_at' => now(),
+       'flag' => 0,
+    ]);
+    Log::info("🟢 Berhasil insert ke ds_input untuk DI No: $diNo");
+} catch (\Exception $e) {
+    Log::error("❌ Gagal insert ke ds_input untuk DI No: $diNo | Error: " . $e->getMessage());
+}
+
+        // kembalikan status sukses insert
         return 'created';
     }
 
-  private function prepareUpdateData(array $row, $reference = null)
-{
-    $updateData = [
-        'di_no' => $row[0] ?? null,
-        'gate' => $row[1] ?? null,
-        'po_number' => $row[2] ?? null,
-        'supplier_part_number' => $row[3] ?? null,
-        'supplier_part_number_desc' => $row[4] ?? null,
-        'qty' => $this->parseQty($row[5] ?? 0),
-        'di_type' => $row[6] ?? null,
-         'di_received_date_string' => \Carbon\Carbon::parse($row[7])->format('d-M-Y'),
-        'di_received_time' => $row[8] ?? null,
-       
-    ];
+    private function prepareUpdateData(array $row, $reference = null)
+    {
+        $updateData = [
+            'di_no' => $row[0] ?? null,
+            'gate' => $row[1] ?? null,
+            'po_number' => $row[2] ?? null,
+            'supplier_part_number' => $row[3] ?? null,
+            'supplier_part_number_desc' => $row[4] ?? null,
+            'qty' => $this->parseQty($row[5] ?? 0),
+            'di_type' => $row[6] ?? null,
+            'di_received_date_string' => \Carbon\Carbon::parse($row[7])->format('d-M-Y'),
+            'di_received_time' => $row[8] ?? null,
+        ];
 
-    if ($reference) {
-        if (!empty($reference->baan_pn)) {
-            $updateData['baan_pn'] = $reference->baan_pn;
+        if ($reference) {
+            if (!empty($reference->baan_pn)) {
+                $updateData['baan_pn'] = $reference->baan_pn;
+            }
+            if (!empty($reference->visteon_pn)) {
+                $updateData['visteon_pn'] = $reference->visteon_pn;
+            }
         }
-        if (!empty($reference->visteon_pn)) {
-            $updateData['visteon_pn'] = $reference->visteon_pn;
-        }
+
+        return $updateData;
     }
-
-    return $updateData;
-}
 
     private function normalizePartNumber($partNumber)
     {
@@ -239,12 +260,36 @@ class DeliveryController extends Controller
 
         return is_numeric($cleaned) ? (int) floor((float) $cleaned) : 0;
     }
-}
 
-class SimpleArrayImport implements ToArray
+  private function generateDsNumber()
+{
+    $today = now()->format('Ymd');
+    $prefix = "DS-{$today}-";
+
+    $last = DB::table('ds_input')
+        ->whereDate('created_at', now()->toDateString())
+        ->where('ds_number', 'like', "$prefix%")
+        ->orderByDesc('ds_number')
+        ->value('ds_number');
+
+    if ($last) {
+        $lastIncr = (int) substr($last, -4);
+        $nextIncr = $lastIncr + 1;
+    } else {
+        $nextIncr = 1;
+    }
+
+    $formattedIncr = str_pad($nextIncr, 4, '0', STR_PAD_LEFT);
+    $dsNumber = $prefix . $formattedIncr;
+
+    Log::debug("📦 Generated DS Number: $dsNumber");
+
+    return $dsNumber;
+}
+}class SimpleArrayImport implements ToArray
 {
     public function array(array $array)
     {
         return $array;
-    }
+    }   
 }
