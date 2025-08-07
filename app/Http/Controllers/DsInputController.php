@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Pagination\Paginator;
 use Carbon\Carbon;
 
 class DsInputController extends Controller
@@ -15,10 +14,10 @@ class DsInputController extends Controller
         $perPage = $request->get('per_page', 10); // Default 10 entries per page
         $search = $request->get('search');
         $currentPage = $request->get('page', 1);
-        
+
         // Start building the query
         $query = DB::table('ds_input');
-        
+
         // Add search functionality
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -29,10 +28,10 @@ class DsInputController extends Controller
                   ->orWhere('di_status', 'like', "%{$search}%");
             });
         }
-        
+
         // Get total count for pagination
         $total = $query->count();
-        
+
         // Add ordering and pagination
         $offset = ($currentPage - 1) * $perPage;
         $items = $query->orderBy('created_at', 'desc')
@@ -40,14 +39,22 @@ class DsInputController extends Controller
                       ->limit($perPage)
                       ->get()
                       ->map(function ($item) {
-                          if (!empty($item->di_received_date)) {
-                              $item->di_received_date_string = optional(\Carbon\Carbon::parse($item->di_received_date))->format('d-M-Y');
+                          if (!empty($item->di_received_date_string)) {
+                              try {
+                                  $carbonDate = Carbon::parse($item->di_received_date_string);
+                                  $item->di_received_date_display = $carbonDate->format('d-m-Y'); // tampilan
+                                  $item->di_received_date_string = $carbonDate->format('Y-m-d'); // untuk input
+                              } catch (\Exception $e) {
+                                  $item->di_received_date_display = '-';
+                                  $item->di_received_date_string = null;
+                              }
                           } else {
-                              $item->di_received_date_string = '-'; // fallback kalau kosong/null
+                              $item->di_received_date_display = '-';
+                              $item->di_received_date_string = null;
                           }
                           return $item;
                       });
-        
+
         // Create pagination manually
         $dsInputs = new LengthAwarePaginator(
             $items,
@@ -59,10 +66,9 @@ class DsInputController extends Controller
                 'pageName' => 'page',
             ]
         );
-        
+
         // Preserve query parameters
         $dsInputs->appends($request->query());
-        
         return view('ds_input.index', compact('dsInputs'));
     }
 
@@ -74,6 +80,7 @@ class DsInputController extends Controller
             'qty' => 'required|integer|min:1',
             'di_type' => 'required|string',
             'di_status' => 'required|string',
+            'di_received_date_string' => 'nullable|date'
         ]);
 
         try {
@@ -86,7 +93,9 @@ class DsInputController extends Controller
                 'qty' => intval($request->qty),
                 'di_type' => $request->di_type,
                 'di_status' => $request->di_status,
-                'di_received_date' => Carbon::now()->toDateString(),
+                'di_received_date_string' => $request->di_received_date_string 
+                    ? Carbon::parse($request->di_received_date_string)->format('Y-m-d')
+                    : null,
                 'di_received_time' => Carbon::now()->toTimeString(),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -99,7 +108,6 @@ class DsInputController extends Controller
         }
     }
 
-    
     public function update(Request $request, $ds_number)
     {
         $request->validate([
@@ -108,19 +116,20 @@ class DsInputController extends Controller
             'qty' => 'required|integer|min:1',
             'di_type' => 'nullable|string',
             'di_status' => 'nullable|string',
-            'di_received_date' => 'nullable|date',
+            'di_received_date_string' => 'nullable|date',
             'di_received_time' => 'nullable',
             'flag' => 'required|in:0,1'
         ]);
-        
-        // Sekarang variabel $ds_number sudah tersedia
+
         DB::table('ds_input')->where('ds_number', $ds_number)->update([
             'gate' => $request->gate,
             'supplier_part_number' => $request->supplier_part_number,
             'qty' => intval($request->qty),
             'di_type' => $request->di_type,
             'di_status' => $request->di_status,
-            'di_received_date' => $request->di_received_date,
+            'di_received_date_string' => $request->di_received_date_string
+                ? Carbon::parse($request->di_received_date_string)->format('Y-m-d')
+                : null,
             'di_received_time' => $request->di_received_time,
             'updated_at' => now(),
             'flag' => $request->flag ?? 0,
@@ -134,7 +143,7 @@ class DsInputController extends Controller
         DB::table('ds_input')->where('ds_number', $ds_number)->delete();
         return redirect()->route('ds_input.index')->with('success', '🗑️ Data berhasil dihapus');
     }
-    
+
     private function generateDsNumber()
     {
         $today = Carbon::now()->format('Ymd');

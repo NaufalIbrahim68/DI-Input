@@ -163,7 +163,7 @@ class DeliveryController extends Controller
         'qty' => $this->parseQty($row[5] ?? 0),
         'di_type' => $row[6] ?? null,
         'di_status' => null,
-        'di_received_date' => !empty($row[7]) ? \Carbon\Carbon::parse($row[7]) : null,
+        'di_received_date_string' => !empty($row[7]) ? \Carbon\Carbon::parse($row[7]) : null,
         'di_received_time' => $row[8] ?? null,
         'created_at' => now(),
         'updated_at' => now(),
