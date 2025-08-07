@@ -88,19 +88,20 @@ class DiInputImport implements ToCollection, WithHeadingRow
                 // Generate dan simpan ke ds_input
                 $dsNumber = $this->generateDsNumber();
 
-                DB::table('ds_input')->insert([
-                    'ds_number' => $dsNumber,
-                    'gate' => $row['gate'],
-                    'supplier_part_number' => $originalSupplierPN,
-                    'qty' => $this->parseQty($row['qty']),
-                    'di_type' => $row['di_type'],
-                    'di_status' => $row['di_status'],
-                    'di_received_date' => $this->parseDate($row['di_received_date']),
-                    'di_received_time' => $row['di_received_time'],
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                    'flag' => null,
-                ]);
+       DB::table('ds_input')->insert([
+    'ds_number' => $dsNumber,
+    'gate' => $row['gate'],
+    'supplier_part_number' => $originalSupplierPN,
+    'qty' => $this->parseQty($row['qty']),
+    'di_type' => $row['di_type'],
+    'di_status' => $row['di_status'],
+    'di_received_date' => $this->parseDate($row['di_received_date']),
+    'di_received_time' => $row['di_received_time'],
+    'di_received_date_string' => optional($this->parseDate($row['di_received_date']))->format('d-M-Y'),
+    'created_at' => now(),
+    'updated_at' => now(),
+    'flag' => 0,
+]);
 
                 $importedCount++;
             } catch (\Exception $e) {

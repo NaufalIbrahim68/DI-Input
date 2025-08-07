@@ -53,8 +53,8 @@
             </div>
         </div>
         <div class="table-responsive" style="overflow-x: auto;">
-            <table id="dsTable" class="table table-bordered">
-                <thead class="bg-dark text-white">
+            <table id="dsTable" class="table table-bordered bg-white">
+                <thead class="bg-black text-white">
                     <tr>
                         <th>No</th>
                         <th>DS Number</th>
@@ -72,7 +72,7 @@
                 <tbody>
                     @foreach ($dsInputs as $index => $ds)
                         <tr>
-                            <td class="text-dark">{{ $index + 1 }}</td>
+                            <td class="text-dark">{{ $dsInputs->firstItem() + $index }}</td>
                             <td class="text-dark">{{ $ds->ds_number }}</td>
                             <td class="text-dark">{{ $ds->gate }}</td>
                             <td class="text-dark">{{ $ds->supplier_part_number }}</td>
@@ -86,7 +86,7 @@
                             <td class="text-dark">{{ $ds->di_received_time }}</td>
                             <td class="text-dark">
                                 <div class="d-flex justify-content-start gap-2">
-                                    <button class="btn btn-sm btn-warning flex-fill text-nowrap show-edit-form"
+                                    <button class="btn btn-sm  flex-fill bg-white text-nowrap show-edit-form"
                                         data-ds="{{ $ds->ds_number }}">
                                         ✏️
                                     </button>
@@ -95,7 +95,7 @@
                                         onsubmit="return confirm('Yakin ingin hapus data ini?')" class="flex-fill">
                                         @csrf
                                         @method('DELETE')
-                                        <button class="btn btn-sm btn-danger text-nowrap">
+                                        <button class="btn btn-sm  bg-white text-nowrap">
                                             🗑️
                                         </button>
                                     </form>

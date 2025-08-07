@@ -24,51 +24,53 @@ class DeliveryImport implements ToModel, WithHeadingRow, WithChunkReading
         return 6; 
     }
 
-    public function model(array $row)
-    {
-        
-        return new DiInputModel([
-            'di_no' => $row[0],
-            'gate' => $row[1],
-            'po_number' => $row[2],
-            'po_item' => $row[3],
-            'supplier_id' => $row[4],
-            'supplier_desc' => $row[5],
-            'supplier_part_number' => $row[6],
-            'supplier_part_number_desc' => $row[7],
-            'qty' => $this->parseQty($row[8]),  
-            'uom' => $row[9],
-            'critical_part' => $row[10],
-            'flag_subcontracting' => $row[11],
-            'po_status' => $row[12],
-           'latest_gr_date_po' => $this->parseDate($row[13]),
-            'di_type' => $row[14],
-            'di_status' => $row[15],
-           'di_received_date' => $this->parseDate($row[16]),
-            'di_received_time' => $row[17],
-           'di_created_date' => $this->parseDate($row[18]),
-            'di_created_time' => $row[19],
-            'di_no_original' => $row[20],
-            'di_no_split' => $row[21],
-            'dn_no' => $row[22],
-            'plant_id_dn' => $row[23],
-            'plant_desc_dn' => $row[24],
-            'supplier_id_dn' => $row[25],
-            'supplier_desc_dn' => $row[26],
-            'plant_supplier_dn' => $row[27],
-           
+   public function model(array $row)
+{
+    
+    return new DiInputModel([
+        'di_no' => $row['ds_number'] ?? null,
+        'gate' => $row['gate'] ?? null,
+        'po_number' => $row['po_number'] ?? null,
+        'po_item' => $row['po_item'] ?? null,
+        'supplier_id' => $row['supplier_id'] ?? null,
+        'supplier_desc' => $row['supplier_desc'] ?? null,
+        'supplier_part_number' => $row['supplier_part_number'] ?? null,
+        'supplier_part_number_desc' => $row['supplier_part_number_desc'] ?? null,
+        'qty' => $this->parseQty($row['qty'] ?? null),
+        'uom' => $row['uom'] ?? null,
+        'critical_part' => $row['critical_part'] ?? null,
+        'flag_subcontracting' => $row['flag_subcontracting'] ?? null,
+        'po_status' => $row['po_status'] ?? null,
+        'latest_gr_date_po' => $this->parseDate($row['latest_gr_date_po'] ?? null),
+        'di_type' => $row['di_type'] ?? null,
+        'di_status' => $row['di_status'] ?? null,
+        'di_received_date' => $this->parseDate($row['di_received_date'] ?? null),
+        'di_received_time' => $row['di_received_time'] ?? null,
+        'di_created_date' => $this->parseDate($row['di_created_date'] ?? null),
+        'di_created_time' => $row['di_created_time'] ?? null,
+        'di_no_original' => $row['di_no_original'] ?? null,
+        'di_no_split' => $row['di_no_split'] ?? null,
+        'dn_no' => $row['dn_no'] ?? null,
+        'plant_id_dn' => $row['plant_id_dn'] ?? null,
+        'plant_desc_dn' => $row['plant_desc_dn'] ?? null,
+        'supplier_id_dn' => $row['supplier_id_dn'] ?? null,
+        'supplier_desc_dn' => $row['supplier_desc_dn'] ?? null,
+        'plant_supplier_dn' => $row['plant_supplier_dn'] ?? null,
+    ]);
 
-        ]);
+
     }
 
     /**
      * Membersihkan dan parsing qty
      */
     private function parseQty($qty)
-    {
-        $cleaned = preg_replace('/[^\d.]/', '', $qty); // hapus karakter selain angka & titik
-        return is_numeric($cleaned) ? floor((float)$cleaned) : 0;
-    }
+{
+    // Bersihkan: hilangkan koma, spasi, dan pastikan string tetap numerik
+    $cleaned = str_replace([',', ' '], '', trim($qty));
+
+    return is_numeric($cleaned) ? (int)$cleaned : 0;
+}
 
     /**
      * Parsing tanggal dari Excel
