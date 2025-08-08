@@ -6,6 +6,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Carbon\Carbon;
+use App\Imports\DsInputImport;
+use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Log;
+
+
 
 class DsInputController extends Controller
 {
@@ -34,27 +39,39 @@ class DsInputController extends Controller
 
         // Add ordering and pagination
         $offset = ($currentPage - 1) * $perPage;
-        $items = $query->orderBy('created_at', 'desc')
-                      ->offset($offset)
-                      ->limit($perPage)
-                      ->get()
-                      ->map(function ($item) {
-                          if (!empty($item->di_received_date_string)) {
-                              try {
-                                  $carbonDate = Carbon::parse($item->di_received_date_string);
-                                  $item->di_received_date_display = $carbonDate->format('d-m-Y'); // tampilan
-                                  $item->di_received_date_string = $carbonDate->format('Y-m-d'); // untuk input
-                              } catch (\Exception $e) {
-                                  $item->di_received_date_display = '-';
-                                  $item->di_received_date_string = null;
-                              }
-                          } else {
-                              $item->di_received_date_display = '-';
-                              $item->di_received_date_string = null;
-                          }
-                          return $item;
-                      });
-
+       $items = $query->select([
+    'ds_number',
+    'gate',
+    'supplier_part_number',
+    'qty',
+    'di_type',
+    'di_status',
+    'di_received_time',
+    'created_at',
+    'updated_at',
+    'flag',
+    'di_received_date_string',
+])
+->orderBy('created_at', 'desc')
+->offset($offset)
+->limit($perPage)
+->get()
+->map(function ($item) {
+    if (!empty($item->di_received_date_string)) {
+        try {
+            $carbonDate = Carbon::parse($item->di_received_date_string);
+            $item->di_received_date_display = $carbonDate->format('d-m-Y'); // tampilan
+            $item->di_received_date_string = $carbonDate->format('Y-m-d'); // untuk input
+        } catch (\Exception $e) {
+            $item->di_received_date_display = '-';
+            $item->di_received_date_string = null;
+        }
+    } else {
+        $item->di_received_date_display = '-';
+        $item->di_received_date_string = null;
+    }
+    return $item;
+});
         // Create pagination manually
         $dsInputs = new LengthAwarePaginator(
             $items,
@@ -120,20 +137,19 @@ class DsInputController extends Controller
             'di_received_time' => 'nullable',
             'flag' => 'required|in:0,1'
         ]);
-
-        DB::table('ds_input')->where('ds_number', $ds_number)->update([
-            'gate' => $request->gate,
-            'supplier_part_number' => $request->supplier_part_number,
-            'qty' => intval($request->qty),
-            'di_type' => $request->di_type,
-            'di_status' => $request->di_status,
-            'di_received_date_string' => $request->di_received_date_string
-                ? Carbon::parse($request->di_received_date_string)->format('Y-m-d')
-                : null,
-            'di_received_time' => $request->di_received_time,
-            'updated_at' => now(),
-            'flag' => $request->flag ?? 0,
-        ]);
+DB::table('ds_input')->where('ds_number', $ds_number)->update([
+    'gate' => $request->gate,
+    'supplier_part_number' => $request->supplier_part_number,
+    'qty' => intval($request->qty),
+    'di_type' => $request->di_type,
+    'di_status' => $request->di_status,
+    'di_received_date_string' => $request->di_received_date_string 
+        ? Carbon::parse($request->di_received_date_string)->format('Y-m-d')
+        : null,
+    'di_received_time' => $request->di_received_time,
+    'updated_at' => now(),
+    'flag' => $request->flag ?? 0,
+]);
 
         return redirect()->route('ds_input.index')->with('success', '✅ Data berhasil diupdate!');
     }
@@ -165,4 +181,31 @@ class DsInputController extends Controller
 
         return $prefix . $formattedIncrement;
     }
+
+
+    public function import(Request $request)
+{
+    $request->validate([
+        'file' => 'required|mimes:xlsx,xls,csv|max:51200',
+    ]);
+
+    $importer = new DsInputImport;
+    Excel::import($importer, $request->file('file'));
+
+    $successCount = $importer->getSuccessCount();
+    $failedRows = $importer->getFailedRows();
+
+    if ($successCount === 0) {
+        return back()->with([
+            'error' => '❌ Tidak ada data berhasil diimpor.',
+            'failed_rows' => $failedRows
+        ]);
+    }
+
+    return back()->with([
+        'success' => "✅ {$successCount} data berhasil diimpor ke DS.",
+        'failed_rows' => $failedRows
+    ]);
+}
+    
 }

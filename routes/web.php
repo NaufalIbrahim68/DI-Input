@@ -52,9 +52,9 @@ Route::middleware('auth')->group(function () {
     // ===============================
     Route::prefix('deliveries')->name('deliveries.')->group(function () {
         Route::get('/', [DeliveryController::class, 'index'])->name('index');
-        Route::get('/import-form', function () {
-            return view('deliveries.import');
-        })->name('import.form');
+       Route::get('/import-form', function () {
+    return view('DI_Input.import');
+})->name('import.form');
         Route::get('/import', [DeliveryController::class, 'index'])->name('import.index'); // Optional route
         Route::post('/import', [DeliveryController::class, 'import'])->name('import.submit');
         Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');
@@ -65,6 +65,12 @@ Route::middleware('auth')->group(function () {
 // ===============================
 Route::prefix('ds-input')->name('ds_input.')->group(function () {
     Route::get('/', [DsInputController::class, 'index'])->name('index');
+   Route::post('/import', [DsInputController::class, 'import'])->name('import');
+   Route::get('/import-form', function () {
+    return view('ds_input.import');
+})->name('import.form');
+
+
 
     // Resource tanpa prefix tambahan (langsung ke controller)
     Route::get('/create', [DsInputController::class, 'create'])->name('create');
@@ -83,6 +89,7 @@ Route::prefix('ds-input')->name('ds_input.')->group(function () {
             ->whereNotNull('baan_pn')
             ->orderBy('di_created_date', 'desc')
             ->first();
+
 
         return response()->json($data); // atau return view('cek_baan', compact('data'));
     })->name('cek_baan');

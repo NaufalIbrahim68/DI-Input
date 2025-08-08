@@ -12,7 +12,7 @@
                 <h1 class="text-5xl  text-dark">Data DI</h1>
                 <a href="{{ route('deliveries.import.form') }}"
                     class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-2 rounded text-sm">
-                    + Import Data From Excel
+                    + Import Data DI
                 </a>
             </div>
 

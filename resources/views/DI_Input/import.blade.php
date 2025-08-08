@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="container-fluid px-4">
-        <h2 class="text-black my-4 fw-bold">Import Excel - Delivery Data</h2>
+        <h2 class="text-black my-4 fw-bold">Import Excel - Delivery Instruction</h2>
 
         @if(session('success'))
             <div class="alert alert-success">{{ session('success') }}</div>

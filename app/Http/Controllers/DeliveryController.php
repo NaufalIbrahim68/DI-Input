@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Concerns\ToArray;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
+use App\Imports\DsInputImport;
+
 
 class DeliveryController extends Controller
 {
@@ -159,12 +161,12 @@ class DeliveryController extends Controller
     DB::table('ds_input')->insert([
         'ds_number' => $this->generateDsNumber(),
         'gate' => $row[1] ?? null,
-        'supplier_part_number' => $row[3] ?? null,
-        'qty' => $this->parseQty($row[5] ?? 0),
-        'di_type' => $row[6] ?? null,
-        'di_status' => null,
-        'di_received_date_string' => !empty($row[7]) ? \Carbon\Carbon::parse($row[7]) : null,
-        'di_received_time' => $row[8] ?? null,
+        'supplier_part_number' => $row[2] ?? null,
+        'qty' => $this->parseQty($row[3] ?? 0),
+        'di_type' => $row[4] ?? null,
+        'di_status' => $row[5] ?? null,
+        'di_received_date_string' => !empty($row[6]) ? \Carbon\Carbon::parse($row[7]) : null,
+        'di_received_time' => $row[7] ?? null,
         'created_at' => now(),
         'updated_at' => now(),
        'flag' => 0,
@@ -173,6 +175,8 @@ class DeliveryController extends Controller
 } catch (\Exception $e) {
     Log::error("❌ Gagal insert ke ds_input untuk DI No: $diNo | Error: " . $e->getMessage());
 }
+
+    throw new \Exception("Gagal insert ke ds_input: " . $e->getMessage());
 
         // kembalikan status sukses insert
         return 'created';
@@ -286,10 +290,37 @@ class DeliveryController extends Controller
 
     return $dsNumber;
 }
+
+public function importDs(Request $request)
+{
+    $request->validate([
+        'file' => 'required|file|mimes:xlsx,xls,csv'
+    ]);
+
+    $import = new DsInputImport();
+    Excel::import($import, $request->file('file'));
+
+    $successCount = $import->getSuccessCount();
+    $failedRows = $import->getFailedRows();
+
+    if ($successCount === 0 && count($failedRows) > 0) {
+        return redirect()->back()->with('error', '❌ Tidak ada data berhasil diimpor.')
+                             ->with('failed_rows', $failedRows);
+    }
+
+    if ($successCount > 0 && count($failedRows) > 0) {
+        return redirect()->back()->with('warning', "⚠️ {$successCount} data berhasil diimpor. Sebagian gagal.")
+                                 ->with('failed_rows', $failedRows);
+    }
+
+    return redirect()->back()->with('success', "✅ Berhasil mengimpor {$successCount} data.");
+}
+
 }class SimpleArrayImport implements ToArray
 {
     public function array(array $array)
     {
         return $array;
     }   
+    
 }

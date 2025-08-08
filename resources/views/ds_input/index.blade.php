@@ -17,41 +17,50 @@
 
 
         <div class="row mb-3">
-            <div class="col-md-6">
-                <div class="d-flex align-items-center">
+    <div class="col-md-6">
+        <div class="d-flex align-items-center">
+            <label for="entriesSelect" class="me-2 py-3">Show:</label>
+            <form method="GET" action="{{ request()->url() }}" class="d-flex align-items-center">
+                <!-- Preserve existing query parameters -->
+                @foreach(request()->except(['per_page', 'page']) as $key => $value)
+                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                @endforeach
 
-                    <label for="entriesSelect" class="me-2 py-3">Show:</label>
-                    <form method="GET" action="{{ request()->url() }}" class="d-flex align-items-center">
-                        <!-- Preserve existing query parameters -->
-                        @foreach(request()->except(['per_page', 'page']) as $key => $value)
-                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                        @endforeach
-
-                        <select name="per_page" id="entriesSelect" class="form-select form-select-sm" style="width: auto;"
-                            onchange="this.form.submit()">
-                            <option value="10" {{ request('per_page', 10) == 10 ? 'selected' : '' }}>10</option>
-                            <option value="25" {{ request('per_page', 10) == 25 ? 'selected' : '' }}>25</option>
-                            <option value="50" {{ request('per_page', 10) == 50 ? 'selected' : '' }}>50</option>
-                            <option value="100" {{ request('per_page', 10) == 100 ? 'selected' : '' }}>100</option>
-                        </select>
-                        <span class="ms-2">entries</span>
-                    </form>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <!-- Optional: Add search functionality -->
-                <form method="GET" action="{{ request()->url() }}" class="d-flex py-2">
-                    @foreach(request()->except(['search', 'page']) as $key => $value)
-                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                    @endforeach
-                    <div class="input-group">
-                        <input type="text" name="search" class="form-control" placeholder="Search..."
-                            value="{{ request('search') }}">
-                        <button class="btn btn-outline-secondary" type="submit">🔍</button>
-                    </div>
-                </form>
-            </div>
+                <select name="per_page" id="entriesSelect" class="form-select form-select-sm" style="width: auto;"
+                    onchange="this.form.submit()">
+                    <option value="10" {{ request('per_page', 10) == 10 ? 'selected' : '' }}>10</option>
+                    <option value="25" {{ request('per_page', 10) == 25 ? 'selected' : '' }}>25</option>
+                    <option value="50" {{ request('per_page', 10) == 50 ? 'selected' : '' }}>50</option>
+                    <option value="100" {{ request('per_page', 10) == 100 ? 'selected' : '' }}>100</option>
+                </select>
+                <span class="ms-2">entries</span>
+            </form>
         </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="d-flex justify-content-end align-items-start flex-column flex-md-row gap-2">
+            {{-- Tombol Import Excel DS --}}
+            <a href="{{ route('ds_input.import.form') }}"
+                class="btn btn-success shadow rounded-lg px-4 py-2 text-white hover:bg-green-600 transition-all">
+                  + Import Data DS
+            </a>
+
+            {{-- Form Search --}}
+            <form method="GET" action="{{ request()->url() }}" class="d-flex">
+                @foreach(request()->except(['search', 'page']) as $key => $value)
+                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                @endforeach
+                <div class="input-group">
+                    <input type="text" name="search" class="form-control" placeholder="Search..."
+                        value="{{ request('search') }}">
+                    <button class="btn btn-outline-secondary" type="submit">🔍</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
         <div class="table-responsive" style="overflow-x: auto;">
             <table id="dsTable" class="table table-bordered bg-white">
                 <thead class="bg-black text-white">
