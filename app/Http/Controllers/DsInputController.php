@@ -183,29 +183,34 @@ DB::table('ds_input')->where('ds_number', $ds_number)->update([
     }
 
 
-    public function import(Request $request)
+public function import(Request $request)
 {
     $request->validate([
         'file' => 'required|mimes:xlsx,xls,csv|max:51200',
     ]);
 
-    $importer = new DsInputImport;
+    // Gunakan instance, bukan langsung class
+    $importer = new DsInputImport(); // <- ini penting
     Excel::import($importer, $request->file('file'));
 
-    $successCount = $importer->getSuccessCount();
+    $successCount = $importer->getSuccessCount(); // ini instance yang sama
     $failedRows = $importer->getFailedRows();
 
-    if ($successCount === 0) {
+    if ($successCount > 0 && count($failedRows) > 0) {
+        return back()->with([
+            'warning' => "✅ {$successCount} data berhasil diimpor. ⚠️ Namun ada beberapa baris gagal.",
+            'failed_rows' => $failedRows
+        ]);
+    } elseif ($successCount === 0) {
         return back()->with([
             'error' => '❌ Tidak ada data berhasil diimpor.',
             'failed_rows' => $failedRows
         ]);
+    } else {
+        return back()->with([
+            'success' => "✅ {$successCount} data berhasil diimpor ke DS."
+        ]);
     }
-
-    return back()->with([
-        'success' => "✅ {$successCount} data berhasil diimpor ke DS.",
-        'failed_rows' => $failedRows
-    ]);
 }
     
 }

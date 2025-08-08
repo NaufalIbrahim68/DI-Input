@@ -14,43 +14,72 @@ class DsInputImport implements ToCollection, WithHeadingRow
     private int $successCount = 0;
     private array $failedRows = [];
 
-    public function collection(Collection $rows)
-    {
-        foreach ($rows as $index => $row) {
-            try {
-                $dsNumber = $this->generateDsNumber();
 
-                DB::table('ds_input')->insert([
-                    'ds_number' => $dsNumber,
-                    'gate' => $row['gate'] ?? null,
-                    'supplier_part_number' => $row['supplier_part_number'] ?? null,
-                    'qty' => (int) ($row['qty'] ?? 0),
-                    'di_type' => $row['di_type'] ?? null,
-                    'di_status' => $row['di_status'] ?? null,
-                    'di_received_date_string' => $this->parseDate($row['di_received_date'] ?? null),
-                    'di_received_time' => $row['di_received_time'] ?? null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                    'flag' => 0
-                ]);
+  public function collection(Collection $rows)
+{
+    foreach ($rows as $index => $row) {
+        $rowNumber = $index + 2;
 
-                $this->successCount++;
-                Log::info("✅ Sukses insert ke ds_input: DS Number {$dsNumber}");
-            } catch (\Throwable $e) {
-                $rowNumber = $index + 2; // karena header ada di baris pertama
+        try {
+            $gate = $row['gate'] ?? null;
+            $supplierPartNumber = $row['supplier_part_number'] ?? null;
+            $qty = (int) ($row['qty'] ?? 0);
+            $diType = $row['di_type'] ?? null;
+            $diStatus = $row['di_status'] ?? null;
+            $diReceivedDate = $this->parseDate($row['di_received_date'] ?? null);
+            $diReceivedTime = $row['di_received_time'] ?? null;
 
+            if (!$diReceivedDate) {
                 $this->failedRows[] = [
                     'row_number' => $rowNumber,
-                    'data' => $row->toArray(),
-                    'error' => $e->getMessage(),
+                    'error' => "📅 Tanggal tidak valid atau kosong."
                 ];
-
-                Log::error("❌ Gagal insert ke ds_input pada baris Excel ke-{$rowNumber} | DS Number: {$dsNumber}");
-                Log::error("📄 Data baris: " . json_encode($row));
-                Log::error("💥 Error: " . $e->getMessage());
+                continue;
             }
+
+            $isDuplicate = DB::table('ds_input')
+                ->where('gate', $gate)
+                ->where('supplier_part_number', $supplierPartNumber)
+                ->whereDate('di_received_date_string', $diReceivedDate)
+                ->where('di_received_time', $diReceivedTime)
+                ->exists();
+
+            if ($isDuplicate) {
+                $this->failedRows[] = [
+                    'row_number' => $rowNumber,
+                    'error' => "⚠️ Duplikat data dengan Gate & Supplier Part Number pada tanggal yang sama."
+                ];
+                continue;
+            }
+
+            $dsNumber = $this->generateDsNumber();
+
+            DB::table('ds_input')->insert([
+                'ds_number' => $dsNumber,
+                'gate' => $gate,
+                'supplier_part_number' => $supplierPartNumber,
+                'qty' => $qty,
+                'di_type' => $diType,
+                'di_status' => $diStatus,
+                'di_received_date_string' => $diReceivedDate,
+                'di_received_time' => $diReceivedTime,
+                'created_at' => now(),
+                'updated_at' => now(),
+                'flag' => 0,
+            ]);
+
+            $this->successCount++;
+        } catch (\Throwable $e) {
+            $this->failedRows[] = [
+                'row_number' => $rowNumber,
+                'error' => "❌ Error sistem: " . $e->getMessage()
+            ];
         }
     }
+}
+
+
+
 
     public function getSuccessCount(): int
     {

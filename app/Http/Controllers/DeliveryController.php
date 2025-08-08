@@ -157,6 +157,23 @@ class DeliveryController extends Controller
         }
 
         // tetap insert ke ds_input
+
+        $gate = $row[1] ?? null;
+$supplierPartNumber = $row[2] ?? null;
+$diReceivedDate = !empty($row[6]) ? \Carbon\Carbon::parse($row[6])->format('Y-m-d') : null;
+
+// Cek apakah duplikat
+$isDuplicate = DB::table('ds_input')
+    ->where('gate', $gate)
+    ->where('supplier_part_number', $supplierPartNumber)
+    ->whereDate('di_received_date_string', $diReceivedDate)
+    ->exists();
+
+if ($isDuplicate) {
+    Log::warning("⚠️ Duplikat DS terdeteksi: $gate - $supplierPartNumber - $diReceivedDate");
+    throw new \Exception("Duplikat DS: kombinasi gate, supplier_part_number, dan tanggal sudah ada.");
+}
+
        try {
     DB::table('ds_input')->insert([
         'ds_number' => $this->generateDsNumber(),
@@ -174,9 +191,10 @@ class DeliveryController extends Controller
     Log::info("🟢 Berhasil insert ke ds_input untuk DI No: $diNo");
 } catch (\Exception $e) {
     Log::error("❌ Gagal insert ke ds_input untuk DI No: $diNo | Error: " . $e->getMessage());
+    throw new \Exception("Gagal insert ke ds_input: " . $e->getMessage());
 }
 
-    throw new \Exception("Gagal insert ke ds_input: " . $e->getMessage());
+    
 
         // kembalikan status sukses insert
         return 'created';

@@ -12,12 +12,14 @@
             <div class="alert alert-danger">{{ session('error') }}</div>
         @endif
 
-        @if(session('failed_rows'))
+      @if(session('failed_rows'))
     <div class="alert alert-danger mt-4">
         <h5>❌ Beberapa baris gagal diimpor:</h5>
         <ul class="mb-0">
             @foreach(session('failed_rows') as $row)
-                <li>Baris Excel ke-{{ $row }}</li>
+                <li>
+                    Baris Excel ke-{{ $row['row_number'] }} - {{ $row['error'] }}
+                </li>
             @endforeach
         </ul>
     </div>

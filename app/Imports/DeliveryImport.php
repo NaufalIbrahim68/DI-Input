@@ -39,7 +39,7 @@ class DeliveryImport implements ToModel, WithHeadingRow, WithChunkReading
         // Generate dan simpan ke ds_input
         $dsNumber = $this->generateDsNumber();
 
-        DB::table('ds_input')->insert([
+Log::info("Inserting data: ", [
             'ds_number' => $dsNumber,
             'gate' => $row['gate'] ?? null,
             'supplier_part_number' => $originalSupplierPN,
