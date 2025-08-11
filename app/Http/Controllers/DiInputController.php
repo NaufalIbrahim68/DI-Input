@@ -37,26 +37,7 @@ class DiInputController extends Controller
         return redirect()->route('DI_Input.index')->with('message', 'Data berhasil ditambahkan!');
     }
 
-    public function destroy($id)
-    {
-        DiInputModel::findOrFail($id)->delete();
-        return redirect()->route('DI_Input.index')->with('message', 'Data berhasil dihapus!');
-    }
-
-    public function edit($id)
-    {
-        $data = DiInputModel::findOrFail($id);
-        return view('DI_Input.edit', compact('data'));
-    }
-
-    public function update(Request $request, $id)
-    {
-        $data = DiInputModel::findOrFail($id);
-        $data->update($request->all());
-
-        return redirect()->route('DI_Input.index')->with('success', 'Data berhasil diperbarui.');
-    }
-
+   
     // Import Excel
     public function import(Request $request)
     {
