@@ -48,7 +48,7 @@ Log::info("Inserting data: ", [
             'di_status' => $row['di_status'] ?? null,
             'di_received_date' => $this->parseDate($row['di_received_date'] ?? null),
             'di_received_time' => $row['di_received_time'] ?? null,
-            'di_received_date_string' => optional($this->parseDate($row['di_received_date'] ?? null))->format('Y-m-d'),
+           'di_received_date_string' => optional($this->parseDate($row['di_received_date'] ?? null))->format('d-m-Y'),
             'created_at' => now(),
             'updated_at' => now(),
             'flag' => 0,

@@ -37,7 +37,6 @@ class DiInputController extends Controller
         return redirect()->route('DI_Input.index')->with('message', 'Data berhasil ditambahkan!');
     }
 
-   
     // Import Excel
     public function import(Request $request)
     {
@@ -71,5 +70,6 @@ class DiInputController extends Controller
 
     return view('DI_Input.dashboard', compact('summary', 'monthlyData', 'timeline'));
 }
-    
+
 }
+

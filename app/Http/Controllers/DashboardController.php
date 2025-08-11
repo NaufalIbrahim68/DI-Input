@@ -14,20 +14,20 @@ class DashboardController extends Controller
         $supplierPartNumber = $request->input('supplier_part_number');
 
         // Parsing tanggal jika ada
-        if ($request->filled('tanggal')) {
-            try {
-                $tanggal = Carbon::parse($request->input('tanggal'))->format('Y-m-d');
-            } catch (\Exception $e) {
-                return back()->withErrors(['tanggal' => 'Format tanggal tidak valid']);
-            }
-        }
+     if ($request->filled('tanggal')) {
+    try {
+        // parsing sesuai format input yang dikirim dari form (d-m-Y)
+        $tanggal = Carbon::createFromFormat('d-m-Y', $request->input('tanggal'))->format('d-m-Y');
+    } catch (\Exception $e) {
+        return back()->withErrors(['tanggal' => 'Format tanggal tidak valid (gunakan dd-mm-yyyy)']);
+    }
+}
 
-        // Query utama untuk table
-        $query = DiInputModel::query();
+$query = DiInputModel::query();
 
-        if ($tanggal) {
-            $query->whereDate('di_received_date_string', $tanggal);
-        }
+if ($tanggal) {
+    $query->where('di_received_date_string', $tanggal);
+}
 
         if ($supplierPartNumber) {
             $query->whereRaw("REPLACE(supplier_part_number, ' ', '') LIKE ?", ['%' . str_replace(' ', '', $supplierPartNumber) . '%']);

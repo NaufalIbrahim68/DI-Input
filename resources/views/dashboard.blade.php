@@ -14,8 +14,8 @@
         class="appearance-none border border-gray-300 rounded-lg pl-4 pr-10 py-2 bg-white shadow focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-800">
         @foreach ($groupedChartData as $index => $group)
       <option value="{{ $index }}">
-      {{ \Carbon\Carbon::parse($group['labels'][0])->format('d-M-Y') }} s/d
-      {{ \Carbon\Carbon::parse(end($group['labels']))->format('d-M-Y') }}
+     {{ \Carbon\Carbon::parse($group['labels'][0])->format('d-m-Y') }} s/d
+      {{ \Carbon\Carbon::parse(end($group['labels']))->format('d-m-Y') }}
       </option>
       @endforeach
       </select>
@@ -51,7 +51,7 @@
     <div class="mb-2 text-sm text-blue-700 bg-blue-100 p-2 rounded">
       📅 Menampilkan data untuk:
       @if(request('tanggal'))
-     <strong>Tanggal: {{ \Carbon\Carbon::parse(request('tanggal'))->format('d-M-Y') }}</strong>
+   <strong>Tanggal: {{ \Carbon\Carbon::parse(request('tanggal'))->format('d-m-Y') }}</strong>
     @endif
       @if(request('supplier_part_number'))
       <span class="ml-4">🔍 Supplier PN: <strong>{{ request('supplier_part_number') }}</strong></span>
