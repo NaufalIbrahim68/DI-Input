@@ -270,56 +270,71 @@ class DeliveryController extends Controller
         }
     }
 
-    private function processDsInputRow(array $row)
-    {
-        try {
-            $originalDsNumber = trim($row[0] ?? '');
-            $gate = $row[1] ?? null;
-            $supplierPartNumber = $row[2] ?? null;
-            $diReceivedDate = !empty($row[6]) ? \Carbon\Carbon::parse($row[6])->format('Y-m-d') : null;
+  private function processDsInputRow(array $row)
+{
+    try {
+        $originalDsNumber = trim($row[0] ?? '');
+        $gate = $row[1] ?? null;
+        $supplierPartNumber = $row[2] ?? null;
 
-            // Selalu generate DS Number dengan format standar, abaikan yang dari Excel
-            $dsNumber = $this->generateDsNumber();
+        // Parsing tanggal dari Excel (numeric atau text)
+        $rawDate = $row[7] ?? null; // index disesuaikan dengan posisi kolom di file Excel
 
-            // Log original DS Number untuk tracking
-            if (!empty($originalDsNumber) && $originalDsNumber !== $dsNumber) {
-                Log::info("📝 Original DS Number '$originalDsNumber' diganti dengan '$dsNumber'");
-            }
+        if (is_numeric($rawDate)) {
+            // Excel date number → Y-m-d
+            $diReceivedDate = \Carbon\Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($rawDate))->format('Y-m-d');
+        } else {
+            // Format string → Y-m-d
+            $diReceivedDate = \Carbon\Carbon::parse(str_replace('/', '-', $rawDate))->format('Y-m-d');
+        }
 
-            // Cek duplikat berdasarkan kombinasi gate + supplier_part_number + date
-            $isDuplicate = DB::table('ds_input')
-                ->where('gate', $gate)
-                ->where('supplier_part_number', $supplierPartNumber)
-                ->whereDate('di_received_date_string', $diReceivedDate)
-                ->exists();
+        // String untuk display
+        $diReceivedDateString = \Carbon\Carbon::parse($diReceivedDate)->format('d-m-Y');
 
-            if ($isDuplicate) {
-                Log::warning("⚠️ Duplikat DS terdeteksi berdasarkan gate-part-date: $gate - $supplierPartNumber - $diReceivedDate");
-                return 'failed';
-            }
+        // Generate DS Number baru
+        $dsNumber = $this->generateDsNumber();
 
-            DB::table('ds_input')->insert([
-                'ds_number' => $dsNumber,
-                'gate' => $gate,
-                'supplier_part_number' => $supplierPartNumber,
-                'qty' => $this->parseQty($row[3] ?? 0),
-                'di_type' => $row[4] ?? null,
-                'di_status' => $row[5] ?? null,
-                'di_received_date_string' => $diReceivedDate,
-                'di_received_time' => $row[7] ?? null, 
-                'created_at' => now(),
-                'updated_at' => now(),
-                'flag' => 0,
-            ]);
+        // Log kalau beda dengan DS Number asli dari file
+        if (!empty($originalDsNumber) && $originalDsNumber !== $dsNumber) {
+            Log::info("📝 Original DS Number '$originalDsNumber' diganti dengan '$dsNumber'");
+        }
 
-            Log::info("🟢 Berhasil insert ke ds_input: $dsNumber (Original: $originalDsNumber)");
-            return 'created';
-        } catch (\Exception $e) {
-            Log::error("❌ Gagal insert ke ds_input: " . $e->getMessage());
+        // Cek duplikat (gate + supplier_part_number + date)
+        $isDuplicate = DB::table('ds_input')
+            ->where('gate', $gate)
+            ->where('supplier_part_number', $supplierPartNumber)
+            ->whereDate('di_received_date', $diReceivedDate)
+            ->exists();
+
+        if ($isDuplicate) {
+            Log::warning("⚠️ Duplikat DS terdeteksi berdasarkan gate-part-date: $gate - $supplierPartNumber - $diReceivedDate");
             return 'failed';
         }
-    }
 
+        // Insert data
+        DB::table('ds_input')->insert([
+            'ds_number' => $dsNumber,
+            'gate' => $gate,
+            'supplier_part_number' => $supplierPartNumber,
+            'qty' => $this->parseQty($row[3] ?? 0),
+            'di_type' => $row[4] ?? null,
+            'di_status' => $row[5] ?? null,
+            'di_received_date' => $diReceivedDate, // simpan Y-m-d di DB
+            'di_received_date_string' => $diReceivedDateString, // simpan d-m-Y untuk display
+            'di_received_time' => $row[8] ?? null,
+            'created_at' => now(),
+            'updated_at' => now(),
+            'flag' => 0,
+        ]);
+
+        Log::info("🟢 Berhasil insert ke ds_input: $dsNumber (Original: $originalDsNumber)");
+        return 'created';
+
+    } catch (\Exception $e) {
+        Log::error("❌ Gagal insert ke ds_input: " . $e->getMessage());
+        return 'failed';
+    }
+}
     private function prepareDiInputData(array $row, $reference = null)
     {
         $updateData = [
@@ -331,7 +346,7 @@ class DeliveryController extends Controller
             'qty' => $this->parseQty($row[5] ?? 0),
             'di_type' => $row[6] ?? null,
             'di_received_date_string' => !empty($row[7]) ? \Carbon\Carbon::parse($row[7])->format('d-M-Y') : null,
-            'di_received_time' => $row[7] ?? null,
+            'di_received_time' => $row[8] ?? null,
         ];
 
         if ($reference) {

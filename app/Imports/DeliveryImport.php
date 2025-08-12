@@ -39,21 +39,28 @@ class DeliveryImport implements ToModel, WithHeadingRow, WithChunkReading
         // Generate dan simpan ke ds_input
         $dsNumber = $this->generateDsNumber();
 
-Log::info("Inserting data: ", [
-            'ds_number' => $dsNumber,
-            'gate' => $row['gate'] ?? null,
-            'supplier_part_number' => $originalSupplierPN,
-            'qty' => $this->parseQty($row['qty'] ?? null),
-            'di_type' => $row['di_type'] ?? null,
-            'di_status' => $row['di_status'] ?? null,
-            'di_received_date' => $this->parseDate($row['di_received_date'] ?? null),
-            'di_received_time' => $row['di_received_time'] ?? null,
-           'di_received_date_string' => optional($this->parseDate($row['di_received_date'] ?? null))->format('d-m-Y'),
-            'created_at' => now(),
-            'updated_at' => now(),
-            'flag' => 0,
-        ]);
+        // formating tanggal 
+      $diReceivedDateCarbon = $this->parseDate($row['di_received_date'] ?? null, true);
 
+// Simpan ke DB dalam format SQL-friendly
+$diReceivedDate = $diReceivedDateCarbon?->format('Y-m-d'); 
+
+// Simpan juga versi display kalau memang mau disimpan terpisah (opsional)
+$diReceivedDateString = $diReceivedDateCarbon?->format('d-m-Y');
+Log::info("Inserting data: ", [
+    'ds_number' => $dsNumber,
+    'gate' => $row['gate'] ?? null,
+    'supplier_part_number' => $originalSupplierPN,
+    'qty' => $this->parseQty($row['qty'] ?? null),
+    'di_type' => $row['di_type'] ?? null,
+    'di_status' => $row['di_status'] ?? null,
+    'di_received_date' => $diReceivedDate,
+    'di_received_time' => $this->parseTime($row['di_received_time'] ?? null),
+    'di_received_date_string' => $diReceivedDateString,
+    'created_at' => now(),
+    'updated_at' => now(),
+    'flag' => 0,
+]);
         return new DiInputModel([
             'di_no' => $row['ds_number'] ?? null,
             'gate' => $row['gate'] ?? null,
@@ -71,7 +78,8 @@ Log::info("Inserting data: ", [
             'latest_gr_date_po' => $this->parseDate($row['latest_gr_date_po'] ?? null),
             'di_type' => $row['di_type'] ?? null,
             'di_status' => $row['di_status'] ?? null,
-            'di_received_date' => $this->parseDate($row['di_received_date'] ?? null),
+           'di_received_date' => $this->parseDate($row['di_received_date'] ?? null), // DB format YYYY-MM-DD
+'di_received_date_string' => $this->parseDate($row['di_received_date'] ?? null, true)?->format('d-m-Y'), // display format
             'di_received_time' => $row['di_received_time'] ?? null,
             'di_created_date' => $this->parseDate($row['di_created_date'] ?? null),
             'di_created_time' => $row['di_created_time'] ?? null,
@@ -94,17 +102,42 @@ Log::info("Inserting data: ", [
         return is_numeric($cleaned) ? (int)$cleaned : 0;
     }
 
-    private function parseDate($date)
-    {
-        try {
-            if (empty($date)) return null;
-            if (is_numeric($date)) return Date::excelToDateTimeObject($date);
-            return \Carbon\Carbon::parse($date);
-        } catch (\Exception $e) {
-            Log::warning("⚠️ Invalid date: " . json_encode($date));
-            return null;
+   private function parseDate($date, $returnCarbon = false)
+{
+    try {
+        if (empty($date)) return null;
+
+        if (is_numeric($date)) {
+            $carbonDate = \Carbon\Carbon::instance(Date::excelToDateTimeObject($date));
+        } else {
+            $carbonDate = \Carbon\Carbon::createFromFormat('d-M-Y', strtoupper($date));
         }
+
+        return $returnCarbon ? $carbonDate : $carbonDate->format('Y-m-d'); // default DB format
+    } catch (\Exception $e) {
+        Log::warning("⚠️ Invalid date: " . json_encode($date));
+        return null;
     }
+}
+
+   private function parseTime($time)
+{
+    try {
+        if (empty($time)) return null;
+
+        if (is_numeric($time)) {
+            // Excel numeric -> ambil jam saja
+            return Date::excelToDateTimeObject($time)->format('H:i:s');
+        }
+
+        return date('H:i:s', strtotime($time));
+    } catch (\Exception $e) {
+        Log::warning("⚠️ Invalid time: " . json_encode($time));
+        return null;
+    }
+}
+
+
 
     private function normalizeSupplierPN($partNumber)
     {

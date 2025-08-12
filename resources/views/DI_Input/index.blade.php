@@ -71,7 +71,7 @@
                                 <td class="text-dark border p-2">{{ $DI->qty ?? '-' }}</td>
                                 <td class="text-dark border p-2">{{ $DI->di_type ?? '-' }}</td>
                                 <td class="text-dark border p-2">
-                                    {{ $DI->di_received_date_string ?? '-' }}
+                                       {{ \Carbon\Carbon::parse($DI->di_received_date)->format('d-m-Y') }}
                                 </td>
 
                                 <td class="text-dark border p-2">{{ $DI->di_received_time ?? '-' }}</td>
