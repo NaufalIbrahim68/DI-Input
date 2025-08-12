@@ -23,7 +23,7 @@ class DsInput extends Model
         'qty',
         'di_type',
         'di_status',
-        'di_received_date_string', // sesuaikan dengan kolom di tabel
+        'di_received_date_string', 
         'di_received_time',
         'created_at',
         'updated_at',

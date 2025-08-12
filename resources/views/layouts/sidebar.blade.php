@@ -49,8 +49,6 @@
         </form>
     </li>
 
-
-
     <hr class="sidebar-divider">
 
     <div class="text-center d-none d-md-inline my-3">

@@ -33,6 +33,8 @@
       <canvas id="myChart" class="w-full h-full drop-shadow-md rounded-xl"></canvas>
     </div>
     </div>
+
+    <!-- Filter -->
     <div class="bg-white p-6 rounded-xl shadow mb-6 mt-6">
     <form method="GET" action="{{ route('dashboard') }}" class="mb-4">
       <label for="tanggal" class="text-black mr-2">Filter Tanggal:</label>
@@ -46,13 +48,14 @@
       <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded ml-2">Filter</button>
       <a href="{{ route('dashboard') }}" class="bg-orange-500 text-white px-4 py-2 rounded ml-2">Reset</a>
     </form>
-
+    
     @if((request('tanggal') || request('supplier_part_number')) && !$timeline->isEmpty())
     <div class="mb-2 text-sm text-blue-700 bg-blue-100 p-2 rounded">
       📅 Menampilkan data untuk:
-      @if(request('tanggal'))
-   <strong>Tanggal: {{ \Carbon\Carbon::parse(request('tanggal'))->format('d-m-Y') }}</strong>
-    @endif
+     @if(request('tanggal'))
+    <strong>Tanggal: {{ request('tanggal') }}</strong>
+@endif
+
       @if(request('supplier_part_number'))
       <span class="ml-4">🔍 Supplier PN: <strong>{{ request('supplier_part_number') }}</strong></span>
     @endif

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Carbon\Carbon;
 use App\Imports\DsInputImport;
+use App\Models\DsInput;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Log;
 
@@ -16,7 +17,7 @@ class DsInputController extends Controller
 {
     public function index(Request $request)
     {
-        $perPage = $request->get('per_page', 10); // Default 10 entries per page
+        $perPage = $request->get('per_page', 10); 
         $search = $request->get('search');
         $currentPage = $request->get('page', 1);
 
@@ -125,34 +126,42 @@ class DsInputController extends Controller
         }
     }
 
-    public function update(Request $request, $ds_number)
-    {
-        $request->validate([
-            'gate' => 'required|string',
-            'supplier_part_number' => 'required|string',
-            'qty' => 'required|integer|min:1',
-            'di_type' => 'nullable|string',
-            'di_status' => 'nullable|string',
-            'di_received_date_string' => 'nullable|date',
-            'di_received_time' => 'nullable',
-            'flag' => 'required|in:0,1'
-        ]);
-DB::table('ds_input')->where('ds_number', $ds_number)->update([
-    'gate' => $request->gate,
-    'supplier_part_number' => $request->supplier_part_number,
-    'qty' => intval($request->qty),
-    'di_type' => $request->di_type,
-    'di_status' => $request->di_status,
-    'di_received_date_string' => $request->di_received_date_string 
-        ? Carbon::parse($request->di_received_date_string)->format('Y-m-d')
-        : null,
-    'di_received_time' => $request->di_received_time,
-    'updated_at' => now(),
-    'flag' => $request->flag ?? 0,
-]);
+  public function update(Request $request, $ds_number)
+{
+    $request->validate([
+        'gate' => 'required|string',
+        'supplier_part_number' => 'required|string',
+        'qty' => 'required|integer|min:1',
+        'di_type' => 'nullable|string',
+        'di_status' => 'nullable|string',
+        'di_received_date_string' => 'nullable|date',
+        'di_received_time' => 'nullable',
+        'flag' => 'required|in:0,1'
+    ]);
 
-        return redirect()->route('ds_input.index')->with('success', '✅ Data berhasil diupdate!');
-    }
+    $updated = DB::table('ds_input')
+        ->where('ds_number', $ds_number)
+        ->update([
+            'gate' => $request->gate,
+            'supplier_part_number' => $request->supplier_part_number,
+            'qty' => intval($request->qty),
+            'di_type' => $request->di_type,
+            'di_status' => $request->di_status,
+            'di_received_date_string' => $request->di_received_date_string
+                ? Carbon::parse($request->di_received_date_string)->format('Y-m-d')
+                : null,
+            'di_received_time' => $request->di_received_time,
+            'flag' => $request->flag ?? 0,
+            'updated_at' => now(),
+        ]);
+
+    // Ambil semua query string untuk dipertahankan (page, search, per_page, dll)
+    $queryParams = $request->except(['_token', '_method']);
+
+    return redirect()
+        ->route('ds_input.index', $queryParams)
+        ->with('success', $updated ? '✅ Data berhasil diupdate!' : '⚠️ Data tidak berubah!');
+}
 
     public function destroy($ds_number)
     {

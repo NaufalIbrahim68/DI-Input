@@ -21,7 +21,7 @@ class DsInputImport implements ToCollection, WithHeadingRow
             $rowNumber = $index + 2;
 
             try {
-                // --- baca field dengan fleksibel (baik associative atau numeric)
+              
                 $gate = $this->getValue($row, ['gate', 'Gate', 0, 1]);
                 $supplierPartNumber = $this->getValue($row, ['supplier_part_number', 'Supplier Part Number', 1, 2]);
                 $qty = (int) ($this->getValue($row, ['qty', 'Qty', 2, 3]) ?? 0);
@@ -33,7 +33,6 @@ class DsInputImport implements ToCollection, WithHeadingRow
 
                 // optional: jika semua key utama kosong -> skip
                 if (empty($gate) && empty($supplierPartNumber)) {
-                    // skip blank row
                     continue;
                 }
 
@@ -56,7 +55,7 @@ class DsInputImport implements ToCollection, WithHeadingRow
 
                 $existing = $query->first();
 
-                // prepare payload common
+ 
                 $payload = [
                     'gate' => $gate,
                     'supplier_part_number' => $supplierPartNumber,
