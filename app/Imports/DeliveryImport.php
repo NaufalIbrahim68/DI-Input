@@ -22,80 +22,44 @@ class DeliveryImport implements ToModel, WithHeadingRow, WithChunkReading
         return 6; 
     }
 
-    public function model(array $row)
-    {
-        $originalSupplierPN = $row['supplier_part_number'] ?? '';
-        $normalizedPN = $this->normalizeSupplierPN($originalSupplierPN);
+  public function model(array $row)
+{
+    $originalSupplierPN = $row['supplier_part_number'] ?? '';
+    $normalizedPN = $this->normalizeSupplierPN($originalSupplierPN);
 
-        $reference = DB::table('di_partnumber')
-            ->whereRaw("
-                REPLACE(REPLACE(REPLACE(REPLACE(LOWER(supplier_pn), ' ', ''), '-', ''), '_', ''), '–', '') = ?
-            ", [$normalizedPN])
-            ->first();
+    $reference = DB::table('di_partnumber')
+        ->whereRaw("
+            REPLACE(REPLACE(REPLACE(REPLACE(LOWER(supplier_pn), ' ', ''), '-', ''), '_', ''), '–', '') = ?
+        ", [$normalizedPN])
+        ->first();
 
-        $baanPN = $reference->baan_pn ?? null;
-        $visteonPN = $reference->visteon_pn ?? null;
+    $baanPN = $reference->baan_pn ?? null;
+    $visteonPN = $reference->visteon_pn ?? null;
 
-        // Generate dan simpan ke ds_input
-        $dsNumber = $this->generateDsNumber();
+    $dsNumber = $this->generateDsNumber();
+    $diReceivedDateCarbon = $this->parseDate($row['di_received_date'] ?? null, true);
+    $diReceivedDate = $diReceivedDateCarbon?->format('Y-m-d');
 
-        // formating tanggal 
-      $diReceivedDateCarbon = $this->parseDate($row['di_received_date'] ?? null, true);
+    // Simpan ke ds_input
+    DB::table('ds_input')->insert([
+        'ds_number' => $dsNumber,
+        'gate' => $row['gate'] ?? null,
+        'supplier_part_number' => $originalSupplierPN,
+        'qty' => $this->parseQty($row['qty'] ?? null),
+        'di_type' => $row['di_type'] ?? null,
+        'di_status' => $row['di_status'] ?? null,
+        'di_received_date' => $diReceivedDate,
+        'di_received_time' => $this->parseTime($row['di_received_time'] ?? null),
+        'baan_pn' => strtoupper($baanPN),
+        'visteon_pn' => strtoupper($visteonPN),
+        'created_at' => now(),
+        'updated_at' => now(),
+        'flag' => 0,
+    ]);
 
-// Simpan ke DB dalam format SQL-friendly
-$diReceivedDate = $diReceivedDateCarbon?->format('Y-m-d'); 
-
-// Simpan juga versi display kalau memang mau disimpan terpisah (opsional)
-$diReceivedDateString = $diReceivedDateCarbon?->format('d-m-Y');
-Log::info("Inserting data: ", [
-    'ds_number' => $dsNumber,
-    'gate' => $row['gate'] ?? null,
-    'supplier_part_number' => $originalSupplierPN,
-    'qty' => $this->parseQty($row['qty'] ?? null),
-    'di_type' => $row['di_type'] ?? null,
-    'di_status' => $row['di_status'] ?? null,
-    'di_received_date' => $diReceivedDate,
-    'di_received_time' => $this->parseTime($row['di_received_time'] ?? null),
-    'di_received_date_string' => $diReceivedDateString,
-    'created_at' => now(),
-    'updated_at' => now(),
-    'flag' => 0,
-]);
-        return new DiInputModel([
-            'di_no' => $row['ds_number'] ?? null,
-            'gate' => $row['gate'] ?? null,
-            'po_number' => $row['po_number'] ?? null,
-            'po_item' => $row['po_item'] ?? null,
-            'supplier_id' => $row['supplier_id'] ?? null,
-            'supplier_desc' => $row['supplier_desc'] ?? null,
-            'supplier_part_number' => $originalSupplierPN,
-            'supplier_part_number_desc' => $row['supplier_part_number_desc'] ?? null,
-            'qty' => $this->parseQty($row['qty'] ?? null),
-            'uom' => $row['uom'] ?? null,
-            'critical_part' => $row['critical_part'] ?? null,
-            'flag_subcontracting' => $row['flag_subcontracting'] ?? null,
-            'po_status' => $row['po_status'] ?? null,
-            'latest_gr_date_po' => $this->parseDate($row['latest_gr_date_po'] ?? null),
-            'di_type' => $row['di_type'] ?? null,
-            'di_status' => $row['di_status'] ?? null,
-           'di_received_date' => $this->parseDate($row['di_received_date'] ?? null), // DB format YYYY-MM-DD
-'di_received_date_string' => $this->parseDate($row['di_received_date'] ?? null, true)?->format('d-m-Y'), // display format
-            'di_received_time' => $row['di_received_time'] ?? null,
-            'di_created_date' => $this->parseDate($row['di_created_date'] ?? null),
-            'di_created_time' => $row['di_created_time'] ?? null,
-            'di_no_original' => $row['di_no_original'] ?? null,
-            'di_no_split' => $row['di_no_split'] ?? null,
-            'dn_no' => $row['dn_no'] ?? null,
-            'plant_id_dn' => $row['plant_id_dn'] ?? null,
-            'plant_desc_dn' => $row['plant_desc_dn'] ?? null,
-            'supplier_id_dn' => $row['supplier_id_dn'] ?? null,
-            'supplier_desc_dn' => $row['supplier_desc_dn'] ?? null,
-            'plant_supplier_dn' => $row['plant_supplier_dn'] ?? null,
-            'baan_pn' => strtoupper($baanPN),
-            'visteon_pn' => strtoupper($visteonPN),
-        ]);
-    }
-
+    // Kalau mau tidak menyimpan ke di_input, return null saja
+    return null;
+}
     private function parseQty($qty)
     {
         $cleaned = str_replace([',', ' '], '', trim($qty));

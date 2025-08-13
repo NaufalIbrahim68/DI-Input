@@ -62,7 +62,7 @@
 
       @if($totalQty > 0)
       <div class="text-xl font-bold text-blue-600 mb-4">
-      Total Quantity: {{ number_format($totalQty) }}
+      Total Qty: {{ number_format($totalQty) }}
       </div>
     @endif
     </div>

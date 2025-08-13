@@ -125,9 +125,7 @@ class DeliveryController extends Controller
             }
         }
 
-        // Additional logic: check specific column patterns
-        // If we find 'DI No' or 'PO Number' it's likely DI Input
-        // If we find 'DS Number' or 'DI Status' it's likely DS Input
+    
         
         if ($dsMatches > 0 || in_array('dsnumber', $normalizedHeaders)) {
             return 'ds_input';
@@ -282,7 +280,7 @@ class DeliveryController extends Controller
 
         if (is_numeric($rawDate)) {
             // Excel date number → Y-m-d
-            $diReceivedDate = \Carbon\Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($rawDate))->format('Y-m-d');
+            $diReceivedDate = \Carbon\Carbon::instance(Date::excelToDateTimeObject($rawDate))->format('Y-m-d');
         } else {
             // Format string → Y-m-d
             $diReceivedDate = \Carbon\Carbon::parse(str_replace('/', '-', $rawDate))->format('Y-m-d');
@@ -303,7 +301,7 @@ class DeliveryController extends Controller
         $isDuplicate = DB::table('ds_input')
             ->where('gate', $gate)
             ->where('supplier_part_number', $supplierPartNumber)
-            ->whereDate('di_received_date', $diReceivedDate)
+            ->where('di_received_date_string', $diReceivedDateString)
             ->exists();
 
         if ($isDuplicate) {
@@ -319,7 +317,6 @@ class DeliveryController extends Controller
             'qty' => $this->parseQty($row[3] ?? 0),
             'di_type' => $row[4] ?? null,
             'di_status' => $row[5] ?? null,
-            'di_received_date' => $diReceivedDate, // simpan Y-m-d di DB
             'di_received_date_string' => $diReceivedDateString, // simpan d-m-Y untuk display
             'di_received_time' => $row[8] ?? null,
             'created_at' => now(),

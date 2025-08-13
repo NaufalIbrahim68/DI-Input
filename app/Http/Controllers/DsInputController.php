@@ -162,11 +162,13 @@ class DsInputController extends Controller
         ->with('success', $updated ? '✅ Data berhasil diupdate!' : '⚠️ Data tidak berubah!');
 }
 
-    public function destroy($ds_number)
-    {
-        DB::table('ds_input')->where('ds_number', $ds_number)->delete();
-        return redirect()->route('ds_input.index')->with('success', '🗑️ Data berhasil dihapus');
-    }
+public function destroy($ds_number)
+{
+    DB::table('ds_input')->where('ds_number', $ds_number)->delete();
+
+    return redirect(url()->previous())
+        ->with('success', '🗑️ Data berhasil dihapus');
+}
 
     private function generateDsNumber()
     {
