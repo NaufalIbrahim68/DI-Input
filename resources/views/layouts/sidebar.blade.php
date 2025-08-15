@@ -39,15 +39,15 @@
     <hr class="sidebar-divider">
 
     <!-- Logout -->
-    <li class="nav-item">
-        <a class="nav-link d-flex align-items-center text-black" href="#" onclick="confirmLogout(event)">
+   <li class="nav-item">
+    <form action="{{ route('logout') }}" method="POST">
+        @csrf
+        <button type="submit" class="btn btn-link nav-link text-black d-flex align-items-center">
             <i class="fas fa-sign-out-alt me-2 text-black"></i>
             <span>Logout</span>
-        </a>
-        <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
-            @csrf
-        </form>
-    </li>
+        </button>
+    </form>
+</li>
 
     <hr class="sidebar-divider">
 
