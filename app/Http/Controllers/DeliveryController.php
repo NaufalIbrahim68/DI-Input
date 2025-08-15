@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Concerns\ToArray;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
-use App\Imports\DsInputImport;
-
+use Carbon\Carbon;
 
 class DeliveryController extends Controller
 {
@@ -20,36 +19,55 @@ class DeliveryController extends Controller
     const MEMORY_LIMIT = '1024M';
     const CHUNK_SIZE = 1000;
 
-    // Define expected column structures for each table
-    const DI_INPUT_COLUMNS = [
-        'di_no', 'gate', 'po_number', 'supplier_part_number', 
-        'supplier_part_number_desc', 'qty', 'di_type', 
-        'di_received_date_string', 'di_received_time'
+    // Updated mapping berdasarkan header Excel baru (28 kolom)
+    const EXCEL_COLUMN_MAPPING = [
+        0 => 'di_no',                           // DI No
+        1 => 'gate',                            // Gate
+        2 => 'po_number',                       // PO Number
+        3 => 'po_item',                         // PO Item
+        4 => 'supplier_id',                     // Supplier ID
+        5 => 'supplier_desc',                   // Supplier Desc
+        6 => 'supplier_part_number',            // Supplier Part Number
+        7 => 'supplier_part_number_desc',       // Supplier Part Number Desc
+        8 => 'qty',                            // Qty
+        9 => 'uom',                            // UOM
+        10 => 'critical_part_flag',            // Critical Part Flag
+        11 => 'subcontracting',                // Subcontracting
+        12 => 'po_status',                     // PO Status
+        13 => 'latest_gr_date',                // Latest GR Date
+        14 => 'di_type',                       // PO DI Type
+        15 => 'di_status',                     // DI Status
+        16 => 'di_received_date_string',       // DI Received Date
+        17 => 'di_received_time',              // DI Received Time
+        18 => 'di_created_date',               // DI Created Date
+        19 => 'di_created_time',               // DI Created Time
+        20 => 'di_no_original',                // DI No Original
+        21 => 'di_no_split',                   // DI No Split
+        22 => 'dn_no',                         // DN No
+        23 => 'plant_id_dn',                   // Plant ID (DN)
+        24 => 'plant_desc_dn',                 // Plant Desc (DN)
+        25 => 'supplier_id_dn',                // Supplier ID (DN)
+        26 => 'supplier_desc_dn',              // Supplier Desc (DN)
+        27 => 'plant_supplier_dn',             // Plant Supplier (DN)
     ];
 
-    const DS_INPUT_COLUMNS = [
-        'ds_number', 'gate', 'supplier_part_number', 'qty', 
-        'di_type', 'di_status', 'di_received_date_string', 'di_received_time'
+    // Field yang akan disimpan ke database
+    const DB_FIELDS = [
+        'di_no',
+        'gate', 
+        'po_number',
+        'supplier_part_number',
+        'supplier_part_number_desc',
+        'qty',
+        'di_type',
+        'di_received_date_string',
+        'di_received_time'
     ];
 
     public function index()
     {
         $data = DiInputModel::all();
-
-        return view('DI_Input.index', [
-            'data' => $data
-        ]);
-    }
-
-    public function show($id)
-    {
-        $data = DB::table('di_input')->where('id', $id)->first();
-
-        if (!$data) {
-            return response()->json(['message' => 'Data not found'], 404);
-        }
-
-        return response()->json($data);
+        return view('DI_Input.index', ['data' => $data]);
     }
 
     public function import(Request $request)
@@ -62,103 +80,25 @@ class DeliveryController extends Controller
         ini_set('memory_limit', self::MEMORY_LIMIT);
 
         try {
+            // HANYA gunakan Excel::toArray, JANGAN gunakan Import class untuk menghindari double processing
             $data = Excel::toArray(new SimpleArrayImport(), $request->file('file'));
-
             if (empty($data) || empty($data[0])) {
                 return back()->with('error', '❌ File kosong atau tidak dapat dibaca.');
             }
 
-            // Detect which table structure the Excel data matches
-            $targetTable = $this->detectTableStructure($data[0]);
-            
-            if ($targetTable === 'unknown') {
-                return back()->with('error', '❌ Struktur file Excel tidak sesuai dengan format DI Input atau DS Input.');
-            }
-
-            Log::info("📋 Detected table structure: $targetTable");
+            Log::info("📁 Processing Excel file - Total sheets: " . count($data));
+            Log::info("📊 First sheet rows: " . count($data[0]));
 
             $references = $this->loadReferences();
-            Log::info("📚 Loaded " . $references->count() . " reference data");
+            $result = $this->processExcelData($data[0], $references);
 
-            $result = $this->processExcelData($data[0], $references, $targetTable);
+            return $this->buildResponse($result);
 
-            return $this->buildResponse($result, $targetTable);
         } catch (\Exception $e) {
             Log::error("❌ Import failed: " . $e->getMessage());
+            Log::error("Stack trace: " . $e->getTraceAsString());
             return back()->with('error', '❌ Gagal mengimpor file: ' . $e->getMessage());
         }
-    }
-
-    private function detectTableStructure(array $rows)
-    {
-        // Skip header rows and find the first data row with headers
-        $headerRow = null;
-        for ($i = 0; $i <= self::HEADER_ROWS_TO_SKIP && $i < count($rows); $i++) {
-            if (!$this->isEmptyRow($rows[$i])) {
-                $headerRow = $rows[$i];
-                break;
-            }
-        }
-
-        if (!$headerRow) {
-            return 'unknown';
-        }
-
-        // Normalize headers for comparison
-        $normalizedHeaders = array_map(function($header) {
-            return strtolower(trim(str_replace([' ', '_', '-'], '', $header)));
-        }, $headerRow);
-
-        // Check for DI Input structure indicators
-        $diIndicators = ['dino', 'ponumber', 'supplierpartnumberdesc'];
-        $dsIndicators = ['dsnumber', 'distatus'];
-
-        $diMatches = 0;
-        $dsMatches = 0;
-
-        foreach ($normalizedHeaders as $header) {
-            if (in_array($header, $diIndicators)) {
-                $diMatches++;
-            }
-            if (in_array($header, $dsIndicators)) {
-                $dsMatches++;
-            }
-        }
-
-    
-        
-        if ($dsMatches > 0 || in_array('dsnumber', $normalizedHeaders)) {
-            return 'ds_input';
-        } elseif ($diMatches > 0 || in_array('dino', $normalizedHeaders) || in_array('ponumber', $normalizedHeaders)) {
-            return 'di_input';
-        }
-
-        // Fallback: analyze data content in first few rows
-        return $this->detectByDataContent($rows);
-    }
-
-    private function detectByDataContent(array $rows)
-    {
-        $sampleRows = array_slice($rows, self::HEADER_ROWS_TO_SKIP + 1, 5);
-        
-        foreach ($sampleRows as $row) {
-            if ($this->isEmptyRow($row)) continue;
-            
-            // Check first column patterns
-            $firstCol = trim($row[0] ?? '');
-            
-            // DS Number pattern: DS-YYYYMMDD-XXXX
-            if (preg_match('/^DS-\d{8}-\d{4}$/', $firstCol)) {
-                return 'ds_input';
-            }
-            
-            // DI Number pattern (typically starts with DI or similar)
-            if (preg_match('/^DI/i', $firstCol) || preg_match('/^\d+$/', $firstCol)) {
-                return 'di_input';
-            }
-        }
-
-        return 'unknown';
     }
 
     private function loadReferences()
@@ -172,311 +112,266 @@ class DeliveryController extends Controller
             });
     }
 
-    private function processExcelData(array $rows, $references, string $targetTable)
+    private function processExcelData(array $rows, $references)
     {
         $createdCount = 0;
+        $duplicateCount = 0;
         $failedCount = 0;
         $failedRows = [];
+        $skippedRows = 0;
+        $processedDiNumbers = []; // Track processed DI Numbers to prevent duplicates
 
-        $chunks = array_chunk($rows, self::CHUNK_SIZE, true);
+        $totalRows = count($rows);
+        Log::info("🔄 Starting to process $totalRows rows");
 
-        foreach ($chunks as $chunk) {
-            foreach ($chunk as $index => $row) {
-                if ($index <= self::HEADER_ROWS_TO_SKIP || $this->isEmptyRow($row)) {
-                    continue;
-                }
+        // DEBUG: Log beberapa baris pertama untuk melihat struktur data
+        for ($i = 0; $i < min(10, $totalRows); $i++) {
+            $diNoSample = $this->cleanValue($rows[$i][0] ?? '');
+            Log::info("📋 Row $i sample - DI No: '$diNoSample', Columns: " . count($rows[$i]));
+        }
 
-                if (!$this->validateRequiredFields($row, $targetTable)) {
-                    Log::warning("⚠️ Lewati baris $index karena field wajib kosong.");
-                    $failedRows[] = $index + 1;
-                    $failedCount++;
-                    continue;
-                }
-
-                try {
-                    $status = $this->processRow($row, $references, $targetTable);
-
-                    if ($status === 'created') {
-                        $createdCount++;
-                    } else {
-                        $failedCount++;
-                        $failedRows[] = $index + 1;
-                    }
-
-                    if (($createdCount + $failedCount) % 100 === 0) {
-                        Log::info("📊 Progress: " . ($createdCount + $failedCount) . "/" . count($rows) . " rows processed");
-                    }
-                } catch (\Exception $e) {
-                    $failedCount++;
-                    $failedRows[] = $index + 1;
-                    Log::error("❌ Gagal proses baris $index: " . $e->getMessage());
-                }
+        foreach ($rows as $index => $row) {
+            // Skip header rows dan empty rows
+            if ($index <= self::HEADER_ROWS_TO_SKIP || $this->isEmptyRow($row)) {
+                $skippedRows++;
+                Log::debug("⏭️ Row " . ($index + 1) . ": Skipped (header/empty)");
+                continue;
             }
 
-            if (function_exists('gc_collect_cycles')) {
-                gc_collect_cycles();
+            if (!$this->validateRequiredFields($row)) {
+                $failedRows[] = $index + 1;
+                $failedCount++;
+                Log::warning("❌ Row " . ($index + 1) . ": Validation failed");
+                continue;
+            }
+
+            $diNo = $this->cleanValue($row[0] ?? '');
+            
+            // DEBUG: Log setiap DI No yang diproses
+            Log::debug("🔍 Row " . ($index + 1) . ": Processing DI No: '$diNo'");
+            
+            // Cek duplicate di memory processing (untuk file yang sama)
+            if (in_array($diNo, $processedDiNumbers)) {
+                $duplicateCount++;
+                Log::warning("⚠️ Row " . ($index + 1) . ": Duplicate DI No in same file: $diNo");
+                continue;
+            }
+
+            $status = $this->processDiInputRow($row, $references, $index);
+            
+            if ($status === 'created') {
+                $createdCount++;
+                $processedDiNumbers[] = $diNo; // Track berhasil diproses
+                Log::info("✅ Row " . ($index + 1) . ": Created DI No: $diNo (Total created: $createdCount)");
+                
+                if ($createdCount % 25 == 0) {
+                    Log::info("📊 Progress: $createdCount rows processed successfully");
+                }
+            } elseif ($status === 'duplicate') {
+                $duplicateCount++;
+                Log::info("⚠️ Row " . ($index + 1) . ": Already exists in DB: $diNo");
+            } else {
+                $failedRows[] = $index + 1;
+                $failedCount++;
+                Log::error("❌ Row " . ($index + 1) . ": Failed to process: $diNo");
             }
         }
+
+        Log::info("✅ Processing completed - Total rows: $totalRows, Created: $createdCount, Duplicates: $duplicateCount, Failed: $failedCount, Skipped: $skippedRows");
 
         return [
             'created' => $createdCount,
+            'duplicates' => $duplicateCount,
             'failed' => $failedCount,
-            'failed_rows' => $failedRows
+            'failed_rows' => $failedRows,
+            'skipped' => $skippedRows,
+            'total_processed' => $totalRows - $skippedRows
         ];
     }
 
-    private function processRow(array $row, $references, string $targetTable)
+    private function processDiInputRow(array $row, $references, int $rowIndex)
     {
-        if ($targetTable === 'di_input') {
-            return $this->processDiInputRow($row, $references);
-        } elseif ($targetTable === 'ds_input') {
-            return $this->processDsInputRow($row);
-        }
-        
-        return 'failed';
-    }
-
-    private function processDiInputRow(array $row, $references)
-    {
-        $diNo = trim($row[0] ?? '');
-
-        // Validasi DI No
+        $diNo = $this->cleanValue($row[0] ?? '');
         if (empty($diNo) || strtolower($diNo) === 'di no') {
-            Log::warning("⚠️ DI No kosong atau tidak valid di baris Excel.");
             return 'failed';
         }
 
-        $supplierPN = $this->normalizePartNumber($row[3] ?? '');
+        // Cek existing di database
+        $existing = DiInputModel::where('di_no', $diNo)->first();
+        if ($existing) {
+            Log::info("⚠️ Row " . ($rowIndex + 1) . ": DI No already exists in DB: $diNo");
+            return 'duplicate';
+        }
+
+        $supplierPN = $this->normalizePartNumber($row[6] ?? ''); // Index 6 untuk Supplier Part Number
         $reference = $references->get($supplierPN);
 
         $updateData = $this->prepareDiInputData($row, $reference);
         $updateData['di_no'] = $diNo;
 
         try {
-            $existing = DiInputModel::where('di_no', $diNo)->exists();
-            if (!$existing) {
-                DiInputModel::create($updateData);
-                Log::debug("🆕 DiInput baru disimpan: $diNo");
-                return 'created';
-            } else {
-                Log::info("⚠️ DI No $diNo sudah ada di di_input.");
-                return 'failed';
-            }
+            DB::beginTransaction();
+            
+            // Insert ke di_input
+            DiInputModel::create($updateData);
+            
+            // Generate DS (optional - bisa dipisah ke proses lain)
+            // $this->generateDsFromDiRow($updateData);
+            
+            DB::commit();
+            
+            Log::debug("✅ Row " . ($rowIndex + 1) . ": Created DI No: $diNo");
+            return 'created';
+            
         } catch (\Exception $e) {
-            Log::error("❌ Gagal insert ke di_input untuk DI No: $diNo | " . $e->getMessage());
+            DB::rollBack();
+            Log::error("❌ Row " . ($rowIndex + 1) . ": Failed to create DI No: $diNo | " . $e->getMessage());
             return 'failed';
         }
     }
 
-  private function processDsInputRow(array $row)
-{
-    try {
-        $originalDsNumber = trim($row[0] ?? '');
-        $gate = $row[1] ?? null;
-        $supplierPartNumber = $row[2] ?? null;
-
-        // Parsing tanggal dari Excel (numeric atau text)
-        $rawDate = $row[7] ?? null; // index disesuaikan dengan posisi kolom di file Excel
-
-        if (is_numeric($rawDate)) {
-            // Excel date number → Y-m-d
-            $diReceivedDate = \Carbon\Carbon::instance(Date::excelToDateTimeObject($rawDate))->format('Y-m-d');
-        } else {
-            // Format string → Y-m-d
-            $diReceivedDate = \Carbon\Carbon::parse(str_replace('/', '-', $rawDate))->format('Y-m-d');
-        }
-
-        // String untuk display
-        $diReceivedDateString = \Carbon\Carbon::parse($diReceivedDate)->format('d-m-Y');
-
-        // Generate DS Number baru
-        $dsNumber = $this->generateDsNumber();
-
-        // Log kalau beda dengan DS Number asli dari file
-        if (!empty($originalDsNumber) && $originalDsNumber !== $dsNumber) {
-            Log::info("📝 Original DS Number '$originalDsNumber' diganti dengan '$dsNumber'");
-        }
-
-        // Cek duplikat (gate + supplier_part_number + date)
-        $isDuplicate = DB::table('ds_input')
-            ->where('gate', $gate)
-            ->where('supplier_part_number', $supplierPartNumber)
-            ->where('di_received_date_string', $diReceivedDateString)
-            ->exists();
-
-        if ($isDuplicate) {
-            Log::warning("⚠️ Duplikat DS terdeteksi berdasarkan gate-part-date: $gate - $supplierPartNumber - $diReceivedDate");
-            return 'failed';
-        }
-
-        // Insert data
-        DB::table('ds_input')->insert([
-            'ds_number' => $dsNumber,
-            'gate' => $gate,
-            'supplier_part_number' => $supplierPartNumber,
-            'qty' => $this->parseQty($row[3] ?? 0),
-            'di_type' => $row[4] ?? null,
-            'di_status' => $row[5] ?? null,
-            'di_received_date_string' => $diReceivedDateString, // simpan d-m-Y untuk display
-            'di_received_time' => $row[8] ?? null,
-            'created_at' => now(),
-            'updated_at' => now(),
-            'flag' => 0,
-        ]);
-
-        Log::info("🟢 Berhasil insert ke ds_input: $dsNumber (Original: $originalDsNumber)");
-        return 'created';
-
-    } catch (\Exception $e) {
-        Log::error("❌ Gagal insert ke ds_input: " . $e->getMessage());
-        return 'failed';
-    }
-}
     private function prepareDiInputData(array $row, $reference = null)
     {
-        $updateData = [
-            'di_no' => $row[0] ?? null,
-            'gate' => $row[1] ?? null,
-            'po_number' => $row[2] ?? null,
-            'supplier_part_number' => $row[3] ?? null,
-            'supplier_part_number_desc' => $row[4] ?? null,
-            'qty' => $this->parseQty($row[5] ?? 0),
-            'di_type' => $row[6] ?? null,
-            'di_received_date_string' => !empty($row[7]) ? \Carbon\Carbon::parse($row[7])->format('d-M-Y') : null,
-            'di_received_time' => $row[8] ?? null,
-        ];
+        $updateData = [];
+        
+        // Hanya ambil field yang diperlukan untuk database
+        foreach (self::DB_FIELDS as $fieldName) {
+            $excelIndex = array_search($fieldName, self::EXCEL_COLUMN_MAPPING);
+            if ($excelIndex !== false) {
+                $rawValue = $row[$excelIndex] ?? null;
+                
+                switch ($fieldName) {
+                    case 'qty':
+                        $updateData[$fieldName] = $this->parseQty($rawValue);
+                        break;
+                    case 'di_received_date_string':
+                        $updateData[$fieldName] = $this->parseDate($rawValue);
+                        break;
+                    case 'di_received_time':
+                        $updateData[$fieldName] = $this->parseTime($rawValue);
+                        break;
+                    default:
+                        $updateData[$fieldName] = $this->cleanValue($rawValue);
+                        break;
+                }
+            }
+        }
 
+        // Tambah reference data jika ada
         if ($reference) {
-            if (!empty($reference->baan_pn)) {
-                $updateData['baan_pn'] = $reference->baan_pn;
-            }
-            if (!empty($reference->visteon_pn)) {
-                $updateData['visteon_pn'] = $reference->visteon_pn;
-            }
+            $updateData['baan_pn'] = $reference->baan_pn ?? null;
+            $updateData['visteon_pn'] = $reference->visteon_pn ?? null;
         }
 
         return $updateData;
     }
 
+    private function cleanValue($value)
+    {
+        if (is_null($value)) return null;
+        $cleaned = trim($value);
+        return $cleaned === '' ? null : $cleaned;
+    }
+
     private function normalizePartNumber($partNumber)
     {
-        return strtolower(str_replace([' ', '-', '_'], '', trim($partNumber)));
+        return strtolower(str_replace([' ', '-', '_'], '', trim($partNumber ?? '')));
     }
 
     private function isEmptyRow(array $row)
     {
-        return empty(array_filter($row, function ($value) {
-            return !empty(trim($value));
-        }));
+        return empty(array_filter($row, fn($v) => !is_null($v) && trim($v) !== ''));
     }
 
-    private function validateRequiredFields(array $row, string $targetTable)
+    private function validateRequiredFields(array $row)
     {
-        if ($targetTable === 'di_input') {
-            $diNo = trim($row[0] ?? '');
-            return !empty($diNo) && strtolower($diNo) !== 'di no';
-        } elseif ($targetTable === 'ds_input') {
-            // For DS Input, we can generate DS Number if empty, so check other required fields
-            $gate = trim($row[1] ?? '');
-            $supplierPartNumber = trim($row[2] ?? '');
-            return !empty($gate) || !empty($supplierPartNumber);
+        $diNo = $this->cleanValue($row[0] ?? '');
+        $gate = $this->cleanValue($row[1] ?? '');
+        $supplierPN = $this->cleanValue($row[6] ?? '');
+        
+        return !empty($diNo) && 
+               strtolower($diNo) !== 'di no' && 
+               !empty($gate) && 
+               !empty($supplierPN);
+    }
+
+    private function buildResponse(array $result)
+    {
+        $messages = [];
+        
+        if ($result['created'] > 0) {
+            $messages[] = "✅ {$result['created']} data berhasil diimpor ke DI Input";
         }
         
-        return false;
-    }
-
-    private function buildResponse(array $result, string $targetTable)
-    {
-        $created = $result['created'];
-        $failed = $result['failed'];
-        $failedRows = $result['failed_rows'];
-
-        $tableName = $targetTable === 'di_input' ? 'DI Input' : 'DS Input';
-        $messageParts = [];
-
-        if ($created > 0) {
-            $messageParts[] = "✅ $created data berhasil diimpor ke $tableName";
+        if ($result['duplicates'] > 0) {
+            $messages[] = "⚠️ {$result['duplicates']} data duplicate (sudah ada)";
+        }
+        
+        if ($result['skipped'] > 0) {
+            $messages[] = "⏭️ {$result['skipped']} baris dilewati (header/kosong)";
+        }
+        
+        if ($result['failed'] > 0) {
+            $failedRowsStr = implode(', ', array_slice($result['failed_rows'], 0, 10));
+            if (count($result['failed_rows']) > 10) $failedRowsStr .= '...';
+            $messages[] = "❌ {$result['failed']} gagal (baris: $failedRowsStr)";
         }
 
-        if ($failed > 0) {
-            $failedRowsStr = implode(', ', array_slice($failedRows, 0, 10));
-            if (count($failedRows) > 10) {
-                $failedRowsStr .= '...';
-            }
-            $messageParts[] = "❌ $failed gagal (baris: $failedRowsStr)";
+        // DEBUGGING INFO
+        $totalExpected = $result['total_processed'] ?? 'unknown';
+        $totalActual = $result['created'] + $result['duplicates'] + $result['failed'];
+        $messages[] = "📊 Expected: $totalExpected, Actual processed: $totalActual";
+
+        $fullMessage = implode(' | ', $messages);
+
+        // ALERT jika ada discrepancy
+        if ($result['created'] > ($result['total_processed'] ?? $result['created'])) {
+            Log::alert("🚨 POTENTIAL DUPLICATE PROCESSING: Created ({$result['created']}) > Expected ({$result['total_processed']})");
+            $fullMessage = "🚨 WARNING: Possible duplicate processing detected! " . $fullMessage;
         }
 
-        $fullMessage = implode(' | ', $messageParts);
-
-        if ($created > 0 && $failed === 0) {
+        if ($result['created'] > 0) {
             return back()->with('success', $fullMessage);
-        } elseif ($created > 0 && $failed > 0) {
+        } elseif ($result['duplicates'] > 0 && $result['failed'] === 0) {
             return back()->with('warning', $fullMessage);
         } else {
-            return back()->with('error', "❌ Tidak ada data berhasil diimpor ke $tableName.");
+            return back()->with('error', "❌ Tidak ada data berhasil diimpor. $fullMessage");
         }
     }
 
     private function parseQty($qty)
     {
-        $cleaned = preg_replace('/[^\d.,]/', '', $qty);
-        $cleaned = str_replace(',', '.', $cleaned);
-
-        return is_numeric($cleaned) ? (int) floor((float) $cleaned) : 0;
+        if (is_numeric($qty)) return (int) $qty;
+        $cleaned = preg_replace('/[^\d]/', '', $qty ?? '');
+        return is_numeric($cleaned) ? (int) $cleaned : 0;
     }
 
-    private function generateDsNumber()
+    private function parseDate($value)
     {
-        $today = now()->format('Ymd');
-        $prefix = "DS-{$today}-";
-
-        // Get the highest increment number for today (thread-safe)
-        $last = DB::table('ds_input')
-            ->whereDate('created_at', now()->toDateString())
-            ->where('ds_number', 'like', "$prefix%")
-            ->lockForUpdate() // Prevent race condition
-            ->orderByDesc('ds_number')
-            ->value('ds_number');
-
-        if ($last) {
-            // Extract the increment number from the last DS number
-            $lastIncr = (int) substr($last, -4);
-            $nextIncr = $lastIncr + 1;
-        } else {
-            $nextIncr = 1;
+        if (empty($value)) return null;
+        try {
+            if (is_numeric($value)) {
+                return Date::excelToDateTimeObject($value)->format('Y-m-d');
+            }
+            return Carbon::parse($value)->format('Y-m-d');
+        } catch (\Exception $e) {
+            Log::warning("❌ Date parsing error: " . json_encode($value));
+            return null;
         }
-
-        $formattedIncr = str_pad($nextIncr, 4, '0', STR_PAD_LEFT);
-        $dsNumber = $prefix . $formattedIncr;
-
-        Log::debug("📦 Generated DS Number: $dsNumber (Last: $last)");
-
-        return $dsNumber;
     }
 
-    public function importDs(Request $request)
+    private function parseTime($value)
     {
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv'
-        ]);
-
-        $import = new DsInputImport();
-        Excel::import($import, $request->file('file'));
-
-        $successCount = $import->getSuccessCount();
-        $failedRows = $import->getFailedRows();
-
-        if ($successCount === 0 && count($failedRows) > 0) {
-            return redirect()->back()->with('error', '❌ Tidak ada data berhasil diimpor.')
-                                 ->with('failed_rows', $failedRows);
+        if (empty($value)) return null;
+        try {
+            if (is_numeric($value)) {
+                return Date::excelToDateTimeObject($value)->format('H:i:s');
+            }
+            return Carbon::parse($value)->format('H:i:s');
+        } catch (\Exception $e) {
+            Log::warning("❌ Time parsing error: " . json_encode($value));
+            return null;
         }
-
-        if ($successCount > 0 && count($failedRows) > 0) {
-            return redirect()->back()->with('warning', "⚠️ {$successCount} data berhasil diimpor. Sebagian gagal.")
-                                     ->with('failed_rows', $failedRows);
-        }
-
-        return redirect()->back()->with('success', "✅ Berhasil mengimpor {$successCount} data.");
     }
 }
 
@@ -485,5 +380,5 @@ class SimpleArrayImport implements ToArray
     public function array(array $array)
     {
         return $array;
-    }   
+    }
 }

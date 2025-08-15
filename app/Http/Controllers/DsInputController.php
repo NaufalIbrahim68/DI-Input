@@ -3,224 +3,125 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Carbon\Carbon;
-use App\Imports\DsInputImport;
+use App\Models\DsInputModel;
+use App\Models\DiInputModel;
 use App\Models\DsInput;
+use App\Imports\DsInputImport;
 use Maatwebsite\Excel\Facades\Excel;
-use Illuminate\Support\Facades\Log;
-
-
+use Carbon\Carbon;
 
 class DsInputController extends Controller
 {
     public function index(Request $request)
     {
-        $perPage = $request->get('per_page', 10); 
-        $search = $request->get('search');
-        $currentPage = $request->get('page', 1);
+        $selectedDate = $request->input('selected_date');
+        $statusFilter = $request->input('status', []); // array, default kosong
+        $search       = $request->input('search');
 
-        // Start building the query
-        $query = DB::table('ds_input');
+        $dsInputs = DsInput::when($selectedDate, function ($query) use ($selectedDate) {
+                $query->whereDate('di_received_date_string', $selectedDate);
+            })
+            ->when(!empty($statusFilter), function ($query) use ($statusFilter) {
+                $query->whereIn('di_status', $statusFilter);
+            })
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('ds_number', 'like', "%{$search}%")
+                      ->orWhere('gate', 'like', "%{$search}%")
+                      ->orWhere('supplier_part_number', 'like', "%{$search}%");
+                });
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
 
-        // Add search functionality
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('ds_number', 'like', "%{$search}%")
-                  ->orWhere('gate', 'like', "%{$search}%")
-                  ->orWhere('supplier_part_number', 'like', "%{$search}%")
-                  ->orWhere('di_type', 'like', "%{$search}%")
-                  ->orWhere('di_status', 'like', "%{$search}%");
-            });
-        }
-
-        // Get total count for pagination
-        $total = $query->count();
-
-        // Add ordering and pagination
-        $offset = ($currentPage - 1) * $perPage;
-       $items = $query->select([
-    'ds_number',
-    'gate',
-    'supplier_part_number',
-    'qty',
-    'di_type',
-    'di_status',
-    'di_received_time',
-    'created_at',
-    'updated_at',
-    'flag',
-    'di_received_date_string',
-])
-->orderBy('created_at', 'desc')
-->offset($offset)
-->limit($perPage)
-->get()
-->map(function ($item) {
-    if (!empty($item->di_received_date_string)) {
-        try {
-            $carbonDate = Carbon::parse($item->di_received_date_string);
-            $item->di_received_date_display = $carbonDate->format('d-m-Y'); // tampilan
-            $item->di_received_date_string = $carbonDate->format('Y-m-d'); // untuk input
-        } catch (\Exception $e) {
-            $item->di_received_date_display = '-';
-            $item->di_received_date_string = null;
-        }
-    } else {
-        $item->di_received_date_display = '-';
-        $item->di_received_date_string = null;
-    }
-    return $item;
-});
-        // Create pagination manually
-        $dsInputs = new LengthAwarePaginator(
-            $items,
-            $total,
-            $perPage,
-            $currentPage,
-            [
-                'path' => $request->url(),
-                'pageName' => 'page',
-            ]
-        );
-
-        // Preserve query parameters
-        $dsInputs->appends($request->query());
-        return view('ds_input.index', compact('dsInputs'));
+        return view('ds_input.index', compact('dsInputs', 'selectedDate', 'statusFilter', 'search'));
     }
 
-    public function store(Request $request)
+    public function generate(Request $request)
     {
         $request->validate([
-            'gate' => 'required|string',
-            'supplier_part_number' => 'required|string',
-            'qty' => 'required|integer|min:1',
-            'di_type' => 'required|string',
-            'di_status' => 'required|string',
-            'di_received_date_string' => 'nullable|date'
+            'selected_date' => 'required|date',
+            'status' => 'nullable|array',
+            'status.*' => 'string'
         ]);
 
-        try {
-            $dsNumber = $this->generateDsNumber();
+        $selectedDate = $request->input('selected_date');
+        $statusFilter = $request->input('status', []);
 
-            DB::table('ds_input')->insert([
-                'ds_number' => $dsNumber,
-                'gate' => $request->gate,
-                'supplier_part_number' => $request->supplier_part_number,
-                'qty' => intval($request->qty),
-                'di_type' => $request->di_type,
-                'di_status' => $request->di_status,
-                'di_received_date_string' => $request->di_received_date_string 
-                    ? Carbon::parse($request->di_received_date_string)->format('Y-m-d')
-                    : null,
-                'di_received_time' => Carbon::now()->toTimeString(),
-                'created_at' => now(),
-                'updated_at' => now(),
-                'flag' => $request->flag ?? 0,
-            ]);
+        // Ambil data dari di_input dengan filter status
+        $query = DiInputModel::where('di_received_date_string', $selectedDate);
 
-            return redirect()->back()->with('success', '✅ Data berhasil disimpan!');
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', '❌ Gagal menyimpan data: ' . $e->getMessage());
+        if (!empty($statusFilter)) {
+            $query->whereIn('di_status', $statusFilter);
         }
-    }
 
-  public function update(Request $request, $ds_number)
-{
-    $request->validate([
-        'gate' => 'required|string',
-        'supplier_part_number' => 'required|string',
-        'qty' => 'required|integer|min:1',
-        'di_type' => 'nullable|string',
-        'di_status' => 'nullable|string',
-        'di_received_date_string' => 'nullable|date',
-        'di_received_time' => 'nullable',
-        'flag' => 'required|in:0,1'
-    ]);
+        $dataDI = $query->get();
 
-    $updated = DB::table('ds_input')
-        ->where('ds_number', $ds_number)
-        ->update([
-            'gate' => $request->gate,
-            'supplier_part_number' => $request->supplier_part_number,
-            'qty' => intval($request->qty),
-            'di_type' => $request->di_type,
-            'di_status' => $request->di_status,
-            'di_received_date_string' => $request->di_received_date_string
-                ? Carbon::parse($request->di_received_date_string)->format('Y-m-d')
-                : null,
-            'di_received_time' => $request->di_received_time,
-            'flag' => $request->flag ?? 0,
-            'updated_at' => now(),
-        ]);
+        // Jika tidak ada data DI, tampilkan flash message error
+        if ($dataDI->isEmpty()) {
+            return redirect()->back()->with('error', "Tidak ada data untuk tanggal {$selectedDate}.");
+        }
 
-    $queryParams = $request->except(['_token', '_method']);
+        // Ambil tanggal dalam format YYMMDD
+        $datePrefix = Carbon::parse($selectedDate)->format('ymd');
 
-    return redirect()
-        ->route('ds_input.index', $queryParams)
-        ->with('success', $updated ? '✅ Data berhasil diupdate!' : '⚠️ Data tidak berubah!');
-}
-
-public function destroy($ds_number)
-{
-    DB::table('ds_input')->where('ds_number', $ds_number)->delete();
-
-    return redirect(url()->previous())
-        ->with('success', '🗑️ Data berhasil dihapus');
-}
-
-    private function generateDsNumber()
-    {
-        $today = Carbon::now()->format('Ymd');
-        $prefix = "DS-{$today}-";
-
-        $lastEntry = DB::table('ds_input')
-            ->whereDate('created_at', Carbon::today())
-            ->where('ds_number', 'like', "$prefix%")
+        // Ambil nomor DS terakhir untuk tanggal tersebut
+        $lastDS = DsInput::where('ds_number', 'like', "DS-{$datePrefix}-%")
             ->orderByDesc('ds_number')
-            ->first();
+            ->value('ds_number');
 
-        $nextIncrement = 1;
-        if ($lastEntry) {
-            $lastNumber = (int) substr($lastEntry->ds_number, -4);
-            $nextIncrement = $lastNumber + 1;
+        $nextIncr = $lastDS ? ((int)substr($lastDS, -4)) + 1 : 1;
+
+        foreach ($dataDI as $row) {
+            $dsNumber = "DS-{$datePrefix}-" . str_pad($nextIncr, 4, '0', STR_PAD_LEFT);
+            $nextIncr++; // increment untuk row berikutnya
+
+            // Normalisasi status
+            $statusRaw = strtolower(trim($row->di_status ?? ''));
+            $statusMap = [
+                'created'  => 'Created',
+                'used'     => 'Used',
+                'received' => 'Received',
+            ];
+            $finalStatus = $statusMap[$statusRaw] ?? 'Created';
+
+            // Cek duplikat
+            $exists = DsInput::where('ds_number', $dsNumber)
+                ->where('supplier_part_number', $row->supplier_part_number)
+                ->exists();
+
+            if (!$exists) {
+                DsInput::create([
+                    'ds_number' => $dsNumber,
+                    'gate' => $row->gate,
+                    'supplier_part_number' => $row->supplier_part_number,
+                    'qty' => $row->qty,
+                    'di_type' => $row->di_type,
+                    'di_status' => $finalStatus,
+                    'di_received_time' => $row->di_received_time,
+                    'di_received_date_string' => $row->di_received_date_string,
+                    'flag' => 0,
+                ]);
+            }
         }
 
-        $formattedIncrement = str_pad($nextIncrement, 4, '0', STR_PAD_LEFT);
-
-        return $prefix . $formattedIncrement;
+        return redirect()->back()->with('success', "Menampilkan data DI untuk tanggal {$selectedDate}.");
     }
 
-
-public function import(Request $request)
-{
-    $request->validate([
-        'file' => 'required|mimes:xlsx,xls,csv|max:51200',
-    ]);
-
-    // Gunakan instance, bukan langsung class
-    $importer = new DsInputImport(); // <- ini penting
-    Excel::import($importer, $request->file('file'));
-
-    $successCount = $importer->getSuccessCount(); // ini instance yang sama
-    $failedRows = $importer->getFailedRows();
-
-    if ($successCount > 0 && count($failedRows) > 0) {
-        return back()->with([
-            'warning' => "✅ {$successCount} data berhasil diimpor. ⚠️ Namun ada beberapa baris gagal.",
-            'failed_rows' => $failedRows
-        ]);
-    } elseif ($successCount === 0) {
-        return back()->with([
-            'error' => '❌ Tidak ada data berhasil diimpor.',
-            'failed_rows' => $failedRows
-        ]);
-    } else {
-        return back()->with([
-            'success' => "✅ {$successCount} data berhasil diimpor ke DS."
-        ]);
+    public function generateFromDate(Request $request)
+    {
+        return $this->generate($request);
     }
-}
-    
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls'
+        ]);
+
+        $import = new DsInputImport();
+        Excel::import($import, $request->file('file'));
+
+        return back()->with('success', "Import selesai: {$import->getSuccessCount()} data berhasil.");
+    }
 }

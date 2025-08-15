@@ -9,11 +9,15 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up(): void
+public function up()
 {
     Schema::table('ds_input', function (Blueprint $table) {
-        $table->tinyInteger('flag')->default(0)->after('updated_at');
-        $table->string('di_received_date_string', 30)->nullable()->after('flag');
+        if (!Schema::hasColumn('ds_input', 'flag')) {
+            $table->tinyInteger('flag')->default(0);
+        }
+        if (!Schema::hasColumn('ds_input', 'di_received_date_string')) {
+            $table->string('di_received_date_string', 30)->nullable();
+        }
     });
 }
 

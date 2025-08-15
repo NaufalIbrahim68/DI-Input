@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DiInputModel;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\DeliveryImport;
+
 use Illuminate\Support\Facades\DB;
 
 class DiInputController extends Controller
@@ -44,7 +44,7 @@ class DiInputController extends Controller
             'file' => 'required|mimes:xlsx,xls,csv',
         ]);
 
-        Excel::import(new DeliveryImport, $request->file('file'));
+    
 
         return redirect()->route('DI_Input.index')->with('message', 'Data berhasil diimpor dari Excel!');
     }

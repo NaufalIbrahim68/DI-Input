@@ -113,7 +113,7 @@
     <script src="{{ asset('template-admin/vendor/chart.js/Chart.min.js') }}"></script>
     <script src="{{ asset('template-admin/js/demo/chart-area-demo.js') }}"></script>
     <script src="{{ asset('template-admin/js/demo/chart-pie-demo.js') }}"></script>
-    @stack('scripts')
+   @yield('scripts')
     <script>
         $(document).ready(function() {
             $('#example').DataTable();

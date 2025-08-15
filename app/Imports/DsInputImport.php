@@ -3,7 +3,6 @@
 namespace App\Imports;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Illuminate\Support\Collection;
@@ -19,25 +18,40 @@ class DsInputImport implements ToCollection, WithHeadingRow
     {
         foreach ($rows as $index => $row) {
             try {
-                // Generate DS Number
-                $dsNumber = $this->generateDsNumber();
+                // Gunakan di_no jika ada, kalau tidak auto-generate
+                $dsNumber = $row['di_no'] ?? $this->generateDsNumber();
 
-                // Simpan ke tabel ds_input
-                DB::table('ds_input')->insert([
-                    'ds_number' => $dsNumber,
-                    'gate' => $row['gate'] ?? null,
-                    'supplier_part_number' => $row['supplier_part_number'] ?? null,
-                    'qty' => (int) $row['qty'] ?? 0,
-                    'di_type' => $row['di_type'] ?? null,
-                    'di_status' => $row['di_status'] ?? null,
-                    'di_received_date_string' => $this->parseDate($row['di_received_date'] ?? null),
-                    'di_received_time' => $this->parseTime($row['di_received_time'] ?? null),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                    'flag' => 0
-                ]);
+                // Normalisasi status
+                $status = strtolower(trim($row['di_status'] ?? ''));
+                $statusMap = [
+                    'created' => 'Created',
+                    'used' => 'Used',
+                    'received' => 'Received'
+                ];
+                $finalStatus = $statusMap[$status] ?? 'Created';
 
-                $this->successCount++;
+                // Cek duplikat
+                $exists = DB::table('ds_input')
+                    ->where('ds_number', $dsNumber)
+                    ->where('supplier_part_number', $row['supplier_part_number'])
+                    ->exists();
+
+                if (!$exists) {
+                    DB::table('ds_input')->insert([
+                        'ds_number' => $dsNumber,
+                        'gate' => $row['gate'] ?? null,
+                        'supplier_part_number' => $row['supplier_part_number'] ?? null,
+                        'qty' => isset($row['qty']) ? (int) $row['qty'] : 0,
+                        'di_type' => $row['di_type'] ?? null,
+                        'di_status' => $finalStatus,
+                        'di_received_date_string' => $this->parseDate($row['di_received_date'] ?? null),
+                        'di_received_time' => $this->parseTime($row['di_received_time'] ?? null),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        'flag' => 0
+                    ]);
+                    $this->successCount++;
+                }
             } catch (\Exception $e) {
                 $this->failedRows[] = [
                     'row' => $index + 1,
@@ -51,19 +65,29 @@ class DsInputImport implements ToCollection, WithHeadingRow
     private function parseDate($date)
     {
         if (empty($date)) return null;
-        if (is_numeric($date)) {
-            return Carbon::instance(Date::excelToDateTimeObject($date))->format('Y-m-d');
+
+        try {
+            if (is_numeric($date)) {
+                return Carbon::instance(Date::excelToDateTimeObject($date))->format('Y-m-d');
+            }
+            return Carbon::parse($date)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
         }
-        return Carbon::parse($date)->format('Y-m-d');
     }
 
     private function parseTime($time)
     {
         if (empty($time)) return null;
-        if (is_numeric($time)) {
-            return Date::excelToDateTimeObject($time)->format('H:i:s');
+
+        try {
+            if (is_numeric($time)) {
+                return Date::excelToDateTimeObject($time)->format('H:i:s');
+            }
+            return date('H:i:s', strtotime($time));
+        } catch (\Exception $e) {
+            return null;
         }
-        return date('H:i:s', strtotime($time));
     }
 
     private function generateDsNumber()

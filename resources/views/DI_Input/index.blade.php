@@ -48,6 +48,7 @@
                             <th class="border p-2 bg-black text-white">No</th>
                             <th class="border p-2 bg-black text-white">DI No</th>
                             <th class="border p-2 bg-black text-white">Gate</th>
+                            <th class="border p-2 bg-black text-white">PO Number</th>
                             <th class="border p-2 bg-black text-white">Supplier Part Number</th>
                             <th class="border p-2 bg-black text-white">BAAN PN</th>
                             <th class="border p-2 bg-black text-white">Visteon PN</th>
@@ -64,6 +65,7 @@
                                 <td class="text-dark border p-2">{{ $index + 1 }}</td>
                                 <td class="text-dark border p-2">{{ $DI->di_no ?? '-' }}</td>
                                 <td class="text-dark border p-2">{{ $DI->gate ?? '-' }}</td>
+                                <td class="text-dark border p-2">{{ $DI->po_number?? '-' }}</td>
                                 <td class="text-dark border p-2">{{ $DI->supplier_part_number ?? '-' }}</td>
                                 <td class="text-dark border p-2">{{ $DI->baan_pn ?? '-' }}</td>
                                 <td class="text-dark border p-2">{{ $DI->visteon_pn ?? '-' }}</td>
@@ -71,7 +73,7 @@
                                 <td class="text-dark border p-2">{{ $DI->qty ?? '-' }}</td>
                                 <td class="text-dark border p-2">{{ $DI->di_type ?? '-' }}</td>
                                 <td class="text-dark border p-2">
-                                       {{ \Carbon\Carbon::parse($DI->di_received_date)->format('d-m-Y') }}
+                                       {{ \Carbon\Carbon::parse($DI->di_received_date_string)->format('d-m-Y') }}
                                 </td>
 
                                 <td class="text-dark border p-2">{{ $DI->di_received_time ?? '-' }}</td>
