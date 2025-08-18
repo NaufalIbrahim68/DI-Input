@@ -62,21 +62,21 @@
                     <tbody>
                         @foreach($data as $index => $DI)
                             <tr>
-                                <td class="text-dark border p-2">{{ $index + 1 }}</td>
-                                <td class="text-dark border p-2">{{ $DI->di_no ?? '-' }}</td>
-                                <td class="text-dark border p-2">{{ $DI->gate ?? '-' }}</td>
-                                <td class="text-dark border p-2">{{ $DI->po_number?? '-' }}</td>
-                                <td class="text-dark border p-2">{{ $DI->supplier_part_number ?? '-' }}</td>
-                                <td class="text-dark border p-2">{{ $DI->baan_pn ?? '-' }}</td>
-                                <td class="text-dark border p-2">{{ $DI->visteon_pn ?? '-' }}</td>
-                                <td class="text-dark border p-2">{{ $DI->supplier_part_number_desc ?? '-' }}</td>
-                                <td class="text-dark border p-2">{{ $DI->qty ?? '-' }}</td>
-                                <td class="text-dark border p-2">{{ $DI->di_type ?? '-' }}</td>
-                                <td class="text-dark border p-2">
+                                <td class="text-black border p-2">{{ $index + 1 }}</td>
+                                <td class="text-black border p-2">{{ $DI->di_no ?? '-' }}</td>
+                                <td class="text-black border p-2">{{ $DI->gate ?? '-' }}</td>
+                                <td class="text-black border p-2">{{ $DI->po_number?? '-' }}</td>
+                                <td class="text-black border p-2">{{ $DI->supplier_part_number ?? '-' }}</td>
+                                <td class="text-black border p-2">{{ $DI->baan_pn ?? '-' }}</td>
+                                <td class="text-black border p-2">{{ $DI->visteon_pn ?? '-' }}</td>
+                                <td class="text-black border p-2">{{ $DI->supplier_part_number_desc ?? '-' }}</td>
+                                <td class="text-black border p-2">{{ $DI->qty ?? '-' }}</td>
+                                <td class="text-black border p-2">{{ $DI->di_type ?? '-' }}</td>
+                                <td class="text-black border p-2">
                                        {{ \Carbon\Carbon::parse($DI->di_received_date_string)->format('d-m-Y') }}
                                 </td>
 
-                                <td class="text-dark border p-2">{{ $DI->di_received_time ?? '-' }}</td>
+                                <td class="text-black border p-2">{{ $DI->di_received_time ?? '-' }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -93,7 +93,7 @@
                             "columnDefs": [
                                 { "defaultContent": "", "targets": "_all" }
                             ],
-                            "pageLength": 25,
+                            "pageLength": 10,
                             "responsive": true,
                             "scrollX": true
                         });

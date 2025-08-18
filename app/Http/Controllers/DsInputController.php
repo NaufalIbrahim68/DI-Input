@@ -37,76 +37,77 @@ class DsInputController extends Controller
         return view('ds_input.index', compact('dsInputs', 'selectedDate', 'statusFilter', 'search'));
     }
 
-    public function generate(Request $request)
-    {
-        $request->validate([
-            'selected_date' => 'required|date',
-            'status' => 'nullable|array',
-            'status.*' => 'string'
-        ]);
+   public function generate(Request $request)
+{
+    $request->validate([
+        'selected_date' => 'required|date',
+        'status' => 'nullable|array',
+        'status.*' => 'string'
+    ]);
 
-        $selectedDate = $request->input('selected_date');
-        $statusFilter = $request->input('status', []);
+    $selectedDate = $request->input('selected_date');
+    $statusFilter = $request->input('status', []);
 
-        // Ambil data dari di_input dengan filter status
-        $query = DiInputModel::where('di_received_date_string', $selectedDate);
+    // Ambil data dari di_input dengan filter status
+    $query = DiInputModel::where('di_received_date_string', $selectedDate);
 
-        if (!empty($statusFilter)) {
-            $query->whereIn('di_status', $statusFilter);
-        }
-
-        $dataDI = $query->get();
-
-        // Jika tidak ada data DI, tampilkan flash message error
-        if ($dataDI->isEmpty()) {
-            return redirect()->back()->with('error', "Tidak ada data untuk tanggal {$selectedDate}.");
-        }
-
-        // Ambil tanggal dalam format YYMMDD
-        $datePrefix = Carbon::parse($selectedDate)->format('ymd');
-
-        // Ambil nomor DS terakhir untuk tanggal tersebut
-        $lastDS = DsInput::where('ds_number', 'like', "DS-{$datePrefix}-%")
-            ->orderByDesc('ds_number')
-            ->value('ds_number');
-
-        $nextIncr = $lastDS ? ((int)substr($lastDS, -4)) + 1 : 1;
-
-        foreach ($dataDI as $row) {
-            $dsNumber = "DS-{$datePrefix}-" . str_pad($nextIncr, 4, '0', STR_PAD_LEFT);
-            $nextIncr++; // increment untuk row berikutnya
-
-            // Normalisasi status
-            $statusRaw = strtolower(trim($row->di_status ?? ''));
-            $statusMap = [
-                'created'  => 'Created',
-                'used'     => 'Used',
-                'received' => 'Received',
-            ];
-            $finalStatus = $statusMap[$statusRaw] ?? 'Created';
-
-            // Cek duplikat
-            $exists = DsInput::where('ds_number', $dsNumber)
-                ->where('supplier_part_number', $row->supplier_part_number)
-                ->exists();
-
-            if (!$exists) {
-                DsInput::create([
-                    'ds_number' => $dsNumber,
-                    'gate' => $row->gate,
-                    'supplier_part_number' => $row->supplier_part_number,
-                    'qty' => $row->qty,
-                    'di_type' => $row->di_type,
-                    'di_status' => $finalStatus,
-                    'di_received_time' => $row->di_received_time,
-                    'di_received_date_string' => $row->di_received_date_string,
-                    'flag' => 0,
-                ]);
-            }
-        }
-
-        return redirect()->back()->with('success', "Menampilkan data DI untuk tanggal {$selectedDate}.");
+    if (!empty($statusFilter)) {
+        $query->whereIn('di_status', $statusFilter);
     }
+
+$dataDI = $query->orderBy('gate', 'asc')->get();
+
+    if ($dataDI->isEmpty()) {
+        return redirect()
+            ->route('ds_input.index', ['selected_date' => $selectedDate])
+            ->with('error', "Tidak ada data untuk tanggal {$selectedDate}.");
+    }
+
+    $datePrefix = Carbon::parse($selectedDate)->format('ymd');
+
+    $lastDS = DsInput::where('ds_number', 'like', "DS-{$datePrefix}-%")
+        ->orderByDesc('ds_number')
+        ->value('ds_number');
+
+    $nextIncr = $lastDS ? ((int)substr($lastDS, -4)) + 1 : 1;
+
+    foreach ($dataDI as $row) {
+        $dsNumber = "DS-{$datePrefix}-" . str_pad($nextIncr, 4, '0', STR_PAD_LEFT);
+        $nextIncr++;
+
+        $statusRaw = strtolower(trim($row->di_status ?? ''));
+        $statusMap = [
+            'created'  => 'Created',
+            'used'     => 'Used',
+            'received' => 'Received',
+        ];
+        $finalStatus = $statusMap[$statusRaw] ?? 'Created';
+
+        $exists = DsInput::where('ds_number', $dsNumber)
+            ->where('supplier_part_number', $row->supplier_part_number)
+            ->exists();
+
+        if (!$exists) {
+            DsInput::create([
+                'ds_number' => $dsNumber,
+                'gate' => $row->gate,
+                'supplier_part_number' => $row->supplier_part_number,
+                'qty' => $row->qty,
+                'di_type' => $row->di_type,
+                'di_status' => $finalStatus,
+                'di_received_time' => $row->di_received_time,
+                'di_received_date_string' => $row->di_received_date_string,
+                'flag' => 0,
+            ]);
+        }
+    }
+
+   return redirect()->route('ds_input.index', [
+    'selected_date' => $selectedDate,
+    'status'        => $statusFilter,
+]);
+
+}
 
     public function generateFromDate(Request $request)
     {
@@ -124,4 +125,44 @@ class DsInputController extends Controller
 
         return back()->with('success', "Import selesai: {$import->getSuccessCount()} data berhasil.");
     }
+public function update(Request $request, $ds_number)
+{
+    $request->validate([
+        'gate' => 'required|string',
+        'supplier_part_number' => 'required|string',
+        'qty' => 'required|integer',
+        'di_type' => 'required|string',
+        'di_status' => 'required|string',
+        'di_received_date_string' => 'required|date',
+        'di_received_time' => 'required',
+        'flag' => 'required|integer',
+    ]);
+
+    $dsInput = DsInput::where('ds_number', $ds_number)->firstOrFail();
+
+    $dsInput->update([
+        'gate' => $request->gate,
+        'supplier_part_number' => $request->supplier_part_number,
+        'qty' => $request->qty,
+        'di_type' => $request->di_type,
+        'di_status' => $request->di_status,
+        'di_received_date_string' => $request->di_received_date_string,
+        'di_received_time' => $request->di_received_time,
+        'flag' => $request->flag,
+    ]);
+
+    return redirect()->route('ds_input.index', [
+        'page' => $request->input('page', 1),
+    ])->with('success', 'Data DS berhasil diperbarui.');
+}
+
+public function destroy($ds_number)
+{
+    $dsInput = DsInput::where('ds_number', $ds_number)->firstOrFail();
+    $dsInput->delete();
+
+    return redirect()->route('ds_input.index')
+        ->with('success', "Data DS {$ds_number} berhasil dihapus.");
+}
+
 }

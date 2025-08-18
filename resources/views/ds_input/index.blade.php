@@ -19,7 +19,7 @@
     <div class="d-flex justify-content-center mb-4">
         <form id="generateForm" action="{{ route('ds_input.generate') }}" method="POST" class="d-flex align-items-center gap-3 p-3 border rounded bg-light">
             @csrf
-            <label class="mb-0 fw-semibold">Pilih Tanggal:</label>
+            <label class="mb-0 fw-semibold text-black">Pilih Tanggal:</label>
             <input type="date" name="selected_date" class="form-control" style="width: 200px;" required>
             <button type="submit" class="btn btn-primary px-4">
                 Generate Data From DI
@@ -47,7 +47,7 @@
         </form>
     </div>
 
-  {{-- Info Messages --}}
+ {{-- Info Messages --}}
 @if(!$selectedDate)
     {{-- User belum memilih tanggal --}}
     <div class="alert alert-info text-center">
@@ -58,21 +58,21 @@
     {{-- Data kosong untuk tanggal terpilih --}}
     <div class="alert alert-warning text-center">
         <i class="fas fa-exclamation-triangle me-2"></i>
-        Tidak ada data untuk tanggal <strong>{{ \Carbon\Carbon::parse($selectedDate)->format('d F Y') }}</strong>.
+        Tidak ada data untuk tanggal 
+        <strong>{{ \Carbon\Carbon::parse($selectedDate)->format('d F Y') }}</strong>.
     </div>
 @else
     {{-- Data ditemukan untuk tanggal terpilih --}}
     <div class="alert alert-success text-center">
         <i class="fas fa-check-circle me-2"></i>
-        Menampilkan data DI untuk tanggal 
+        Menampilkan data DS untuk tanggal 
         <strong>{{ \Carbon\Carbon::parse($selectedDate)->format('d F Y') }}</strong>
-        - Ditemukan <strong>{{ $dsInputs->total() }}</strong> data DS
         @if(request('search'))
             dengan pencarian "<strong>{{ request('search') }}</strong>"
         @endif
+        - Ditemukan <strong>{{ $dsInputs->total() }}</strong> data
     </div>
 @endif
-
         <div class="table-responsive" style="overflow-x: auto;">
             <table class="table table-bordered bg-white">
                 <thead class="bg-black text-white">
@@ -83,7 +83,6 @@
                         <th>Supplier Part Number</th>
                         <th>Qty</th>
                         <th>DI Type</th>
-                        <th>DI Status</th>
                         <th>Received Date</th>
                         <th>Received Time</th>
                         <th>Status</th>
@@ -93,17 +92,16 @@
                 <tbody>
                     @foreach ($dsInputs as $index => $ds)
                         <tr>
-                            <td class="text-dark">{{ $dsInputs->firstItem() + $index }}</td>
-                            <td class="text-dark">{{ $ds->ds_number ?? '-' }}</td>
-                            <td class="text-dark">{{ $ds->gate ?? '-' }}</td>
-                            <td class="text-dark">{{ $ds->supplier_part_number ?? '-' }}</td>
-                            <td class="text-dark">{{ $ds->qty ?? '-' }}</td>
-                            <td class="text-dark">{{ $ds->di_type ?? '-' }}</td>
-                            <td class="text-dark">{{ $ds->di_status ?? '-' }}</td>
-                            <td class="text-dark">{{ $ds->di_received_date_string ?? '-' }}</td>
-                            <td class="text-dark">{{ $ds->di_received_time ?? '-' }}</td>
-                            <td class="text-dark">{{ $ds->flag == 1 ? 'Completed' : 'Non Completed' }}</td>
-                            <td class="text-dark">
+                            <td class="text-black">{{ $dsInputs->firstItem() + $index }}</td>
+                            <td class="text-black">{{ $ds->ds_number ?? '-' }}</td>
+                            <td class="text-black">{{ $ds->gate ?? '-' }}</td>
+                            <td class="text-black">{{ $ds->supplier_part_number ?? '-' }}</td>
+                            <td class="text-black">{{ $ds->qty ?? '-' }}</td>
+                            <td class="text-black">{{ $ds->di_type ?? '-' }}</td>
+                            <td class="text-black">{{ $ds->di_received_date_string ?? '-' }}</td>
+                            <td class="text-black">{{ $ds->di_received_time ?? '-' }}</td>
+                            <td class="text-black">{{ $ds->flag == 1 ? 'Completed' : 'Non Completed' }}</td>
+                            <td class="text-black">
                                 <div class="d-flex justify-content-start gap-2">
                                     <button class="btn btn-sm bg-white show-edit-form" data-ds="{{ $ds->ds_number }}">✏️</button>
                                     <form action="{{ route('ds_input.destroy', $ds->ds_number) }}" method="POST" onsubmit="return confirm('Yakin ingin hapus data ini?')">
@@ -131,15 +129,15 @@
                                     <div class="table-responsive">
                                         <table class="table table-bordered mb-0">
                                             <tr>
-                                                <td><input type="text" name="gate" class="form-control form-control-sm" value="{{ $ds->gate }}" required></td>
-                                                <td><input type="text" name="supplier_part_number" class="form-control form-control-sm" value="{{ $ds->supplier_part_number }}" required></td>
-                                                <td><input type="number" name="qty" class="form-control form-control-sm" value="{{ $ds->qty }}" required></td>
-                                                <td><input type="text" name="di_type" class="form-control form-control-sm" value="{{ $ds->di_type }}"></td>
-                                                <td><input type="text" name="di_status" class="form-control form-control-sm" value="{{ $ds->di_status }}"></td>
-                                                <td><input type="date" name="di_received_date_string" class="form-control form-control-sm" value="{{ $ds->di_received_date_string }}"></td>
-                                                <td><input type="time" name="di_received_time" class="form-control form-control-sm" value="{{ $ds->di_received_time }}"></td>
+                                                <td><input type="text" name="gate" class="form-control form-control-sm text-black" value="{{ $ds->gate }}" required></td>
+                                                <td><input type="text" name="supplier_part_number" class="form-control form-control-sm text-black" value="{{ $ds->supplier_part_number }}" required></td>
+                                                <td><input type="number" name="qty" class="form-control form-control-sm text-black" value="{{ $ds->qty }}" required></td>
+                                                <td><input type="text" name="di_type" class="form-control form-control-sm text-black" value="{{ $ds->di_type }}"></td>
+                                                <td><input type="text" name="di_status" class="form-control form-control-sm text-black" value="{{ $ds->di_status }}"></td>
+                                                <td><input type="date" name="di_received_date_string" class="form-control form-control-sm text-black" value="{{ $ds->di_received_date_string }}"></td>
+                                                <td><input type="time" name="di_received_time" class="form-control form-control-sm text-black" value="{{ $ds->di_received_time }}"></td>
                                                 <td>
-                                                    <select name="flag" class="form-control form-control-sm">
+                                                    <select name="flag" class="form-control form-control-sm text-black">
                                                         <option value="0" {{ $ds->flag == 0 ? 'selected' : '' }}>Non Completed</option>
                                                         <option value="1" {{ $ds->flag == 1 ? 'selected' : '' }}>Completed</option>
                                                     </select>

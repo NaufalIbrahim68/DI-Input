@@ -88,20 +88,25 @@
       <tbody>
         @foreach ($timeline as $item)
       <tr class="hover:bg-gray-50">
-      <td class="text-dark border p-2">
+      <td class="text-black border p-2">
         {{ $item->di_received_date_string ?? '-' }}
       </td>
-      <td class="text-dark border p-2">{{ $item->di_no }}</td>
-      <td class="text-dark border p-2">{{ $item->qty }}</td>
-      <td class="text-dark border p-2">{{ $item->supplier_part_number }}</td>
-      <td class="text-dark border p-2">{{ $item->baan_pn }}</td>
-      <td class="text-dark border p-2">{{ $item->visteon_pn }}</td>
+      <td class="text-black border p-2">{{ $item->di_no }}</td>
+      <td class="text-black border p-2">{{ $item->qty }}</td>
+      <td class="text-black border p-2">{{ $item->supplier_part_number }}</td>
+      <td class="text-black border p-2">{{ $item->baan_pn }}</td>
+      <td class="text-black border p-2">{{ $item->visteon_pn }}</td>
       </tr>
       @endforeach
       </tbody>
       </table>
     </div>
     </div>
+    @if($isFiltered)
+    <div class="mt-4">
+        {{ $timeline->appends(request()->except('page'))->links() }}
+    </div>
+@endif
 
     <!-- Inject PHP data into JavaScript variables -->
     <script>
