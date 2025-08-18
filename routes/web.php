@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiInputController;
 use App\Http\Controllers\DeliveryController;
+use App\Http\Controllers\DnController;
 use App\Http\Controllers\DsInputController;
 
 // ========================================
@@ -47,39 +48,50 @@ Route::middleware('auth')->group(function () {
         Route::post('/import', [DiInputController::class, 'import'])->name('import');
     });
 
-  // ===============================
-// 📤 DELIVERY (Import Excel DI + DS)
-Route::prefix('deliveries')->name('deliveries.')->group(function () {
-    Route::get('/', [DeliveryController::class, 'index'])->name('index');
-    Route::get('/import-form', function () {
-        return view('DI_Input.import');
-    })->name('import.form');
-    Route::get('/import', [DeliveryController::class, 'index'])->name('import.index');
-    Route::post('/import', [DeliveryController::class, 'import'])->name('import.submit');
-    Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');
-});
+    // ===============================
+    // 📤 DELIVERY (Import Excel DI + DS)
+    // ===============================
+    Route::prefix('deliveries')->name('deliveries.')->group(function () {
+        Route::get('/', [DeliveryController::class, 'index'])->name('index');
+        Route::get('/import-form', function () {
+            return view('DI_Input.import');
+        })->name('import.form');
+        Route::get('/import', [DeliveryController::class, 'index'])->name('import.index');
+        Route::post('/import', [DeliveryController::class, 'import'])->name('import.submit');
+        Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');
+    });
 
-// Route POST tanpa prefix
-Route::post('/di-input/import', [DeliveryController::class, 'import'])->name('delivery.import');
+    // Route POST tanpa prefix
+    Route::post('/di-input/import', [DeliveryController::class, 'import'])->name('delivery.import');
 
-   // ===============================
-// 🗓️ DS INPUT (Delivery Schedule)
-// ===============================
+    // ===============================
+    // 🗓️ DS INPUT (Delivery Schedule)
+    // ===============================
+    Route::prefix('ds-input')->name('ds_input.')->group(function () {
+        Route::get('/', [DsInputController::class, 'index'])->name('index');
+        Route::post('/import', [DsInputController::class, 'import'])->name('import');
+        Route::post('/generate', [DsInputController::class, 'generateFromDate'])->name('generate');
+        Route::get('/import-form', function () {
+            return view('ds_input.import');
+        })->name('import.form');
 
-Route::prefix('ds-input')->name('ds_input.')->group(function () {
-    Route::get('/', [DsInputController::class, 'index'])->name('index');
-    Route::post('/import', [DsInputController::class, 'import'])->name('import');
-    Route::post('/generate', [DsInputController::class, 'generateFromDate'])->name('generate');
-    Route::get('/import-form', function () {
-        return view('ds_input.import');
-    })->name('import.form');
+        Route::get('/create', [DsInputController::class, 'create'])->name('create');
+        Route::post('/', [DsInputController::class, 'store'])->name('store');
+        Route::get('/{ds}/dn', [DsInputController::class, 'createDn'])->name('create_dn'); 
+        Route::post('/{ds}/dn', [DsInputController::class, 'storeDn'])->name('store_dn');
+        Route::get('/{ds_number}/edit', [DsInputController::class, 'edit'])->name('edit');
+        Route::put('/{ds_number}', [DsInputController::class, 'update'])->name('update');
+        Route::delete('/{ds_number}', [DsInputController::class, 'destroy'])->name('destroy');
+    });
 
-    Route::get('/create', [DsInputController::class, 'create'])->name('create');
-    Route::post('/', [DsInputController::class, 'store'])->name('store');
-    Route::get('/{ds_number}/edit', [DsInputController::class, 'edit'])->name('edit');
-    Route::put('/{ds_number}', [DsInputController::class, 'update'])->name('update');
-    Route::delete('/{ds_number}', [DsInputController::class, 'destroy'])->name('destroy');
-});
+    // ===============================
+    // 📑 DN INPUT (with prefix)
+    // ===============================
+    Route::prefix('dn')->name('dn.')->group(function () {
+        Route::get('/', [DnController::class, 'index'])->name('index');
+        Route::get('/create/{ds_number}', [DnController::class, 'create'])->name('create');
+        Route::post('/store/{ds_number}', [DnController::class, 'store'])->name('store');
+    });
 
     // ===============================
     // 🔍 CEK BAAN (Testing Route)
@@ -90,11 +102,6 @@ Route::prefix('ds-input')->name('ds_input.')->group(function () {
             ->orderBy('di_created_date', 'desc')
             ->first();
 
-            
-
-        return response()->json($data); // atau return view('cek_baan', compact('data'));
+        return response()->json($data);
     })->name('cek_baan');
-
-    
-    
 });

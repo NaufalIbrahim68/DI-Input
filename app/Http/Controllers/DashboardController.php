@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\DiInputModel;
+use App\Models\DsInput; 
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -69,13 +70,40 @@ class DashboardController extends Controller
             ->reverse()
             ->values();
 
+        // ==========================
+        // Data status preparation 7 hari terakhir
+        // ==========================
+        
+        // Hitung tanggal 7 hari yang lalu dalam format string yang sesuai dengan database
+        $sevenDaysAgo = Carbon::now()->subDays(7)->format('Y-m-d');
+        
+        // Hitung completed (berdasarkan di_status = 'Completed')
+        $completed = DsInput::where('di_received_date_string', '>=', $sevenDaysAgo)
+            ->where('di_status', 'Completed')
+            ->count();
+
+        // Hitung non-completed (semua selain 'Completed')
+        $nonCompleted = DsInput::where('di_received_date_string', '>=', $sevenDaysAgo)
+            ->where(function($query) {
+                $query->where('di_status', '!=', 'Completed')
+                      ->orWhereNull('flag');
+            })
+            ->count();
+
+        // Format data untuk chart status
+        $statusData = [
+            'completed' => $completed,
+            'non_completed' => $nonCompleted,
+        ];
+
         return view('dashboard', [
             'timeline' => $timeline,
             'chartLabels' => $groupedChartData->first()['labels'] ?? [],
             'chartData' => $groupedChartData->first()['data'] ?? [],
             'groupedChartData' => $groupedChartData,
             'totalQty' => $totalQty,
-            'isFiltered' => $isFiltered, // kirim ke view biar bisa atur pagination
+            'isFiltered' => $isFiltered,
+            'statusData' => $statusData, // sesuaikan nama variabel dengan yang digunakan di view
         ]);
     }
 }

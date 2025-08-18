@@ -13,29 +13,30 @@ use Carbon\Carbon;
 class DsInputController extends Controller
 {
     public function index(Request $request)
-    {
-        $selectedDate = $request->input('selected_date');
-        $statusFilter = $request->input('status', []); // array, default kosong
-        $search       = $request->input('search');
+{
+    $selectedDate = $request->input('selected_date');
+    $statusFilter = $request->input('status', []); // array, default kosong
+    $search       = $request->input('search');
 
-        $dsInputs = DsInput::when($selectedDate, function ($query) use ($selectedDate) {
-                $query->whereDate('di_received_date_string', $selectedDate);
-            })
-            ->when(!empty($statusFilter), function ($query) use ($statusFilter) {
-                $query->whereIn('di_status', $statusFilter);
-            })
-            ->when($search, function ($query) use ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('ds_number', 'like', "%{$search}%")
-                      ->orWhere('gate', 'like', "%{$search}%")
-                      ->orWhere('supplier_part_number', 'like', "%{$search}%");
-                });
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
+    $dsInputs = DsInput::when($selectedDate, function ($query) use ($selectedDate) {
+            $query->whereDate('di_received_date_string', $selectedDate);
+        })
+        ->when(!empty($statusFilter), function ($query) use ($statusFilter) {
+            $query->whereIn('di_status', $statusFilter);
+        })
+        ->when($search, function ($query) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('ds_number', 'like', "%{$search}%")
+                  ->orWhere('gate', 'like', "%{$search}%")
+                  ->orWhere('supplier_part_number', 'like', "%{$search}%");
+            });
+        })
+        ->orderBy('ds_number', 'asc') // urut dari DS terkecil
+        ->paginate(10);
 
-        return view('ds_input.index', compact('dsInputs', 'selectedDate', 'statusFilter', 'search'));
-    }
+    return view('ds_input.index', compact('dsInputs', 'selectedDate', 'statusFilter', 'search'));
+}
+
 
    public function generate(Request $request)
 {
@@ -163,6 +164,25 @@ public function destroy($ds_number)
 
     return redirect()->route('ds_input.index')
         ->with('success', "Data DS {$ds_number} berhasil dihapus.");
+}
+
+public function createDn($ds_number)
+{
+    $ds = DsInput::where('ds_number', $ds_number)->firstOrFail();
+    return view('ds_input.dn_form', compact('ds'));
+}
+
+public function storeDn(Request $request, $ds_number)
+{
+    $request->validate([
+        'dn_number' => 'required|string|max:50',
+    ]);
+
+    $ds = DsInput::where('ds_number', $ds_number)->firstOrFail();
+    $ds->dn_number = $request->dn_number;
+    $ds->save();
+
+    return redirect()->route('ds_input.index')->with('success', 'Nomor DN berhasil disimpan.');
 }
 
 }
