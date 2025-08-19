@@ -87,12 +87,14 @@ Route::middleware('auth')->group(function () {
     // ===============================
     // 📑 DN INPUT (with prefix)
     // ===============================
-    Route::prefix('dn')->name('dn.')->group(function () {
-        Route::get('/', [DnController::class, 'index'])->name('index');
-        Route::get('/create/{ds_number}', [DnController::class, 'create'])->name('create');
-        Route::post('/store/{ds_number}', [DnController::class, 'store'])->name('store');
-    });
+   Route::prefix('dn')->name('dn.')->group(function () {
+    Route::get('/', [DnController::class, 'index'])->name('index');
+    Route::get('/create/{ds_number}', [DnController::class, 'create'])->name('create');
+    Route::post('/{ds_number}', [DnController::class, 'store'])->name('store');
+});
 
+
+    
     // ===============================
     // 🔍 CEK BAAN (Testing Route)
     // ===============================

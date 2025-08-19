@@ -9,17 +9,11 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up()
+  public function up()
 {
     Schema::table('di_input', function (Blueprint $table) {
-        $table->string('po_number')->nullable()->after('supplier_part_number');
+        if (!Schema::hasColumn('di_input', 'po_number')) {
+            $table->string('po_number')->nullable();
+        }
     });
-}
-
-public function down()
-{
-    Schema::table('di_input', function (Blueprint $table) {
-        $table->dropColumn('po_number');
-    });
-}
-};
+}};

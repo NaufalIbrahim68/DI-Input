@@ -74,7 +74,7 @@
     </div>
 @endif
         <div class="table-responsive" style="overflow-x: auto;">
-            <table class="table table-bordered bg-white">
+               <table class="table table-bordered table-sm bg-white small">
                 <thead class="bg-black text-white">
                     <tr>
                         <th>No</th>
@@ -101,7 +101,33 @@
             <td class="text-black">{{ $ds->di_received_date_string ?? '-' }}</td>
             <td class="text-black">{{ $ds->di_received_time ?? '-' }}</td>
             <td class="text-black">{{ $ds->flag == 1 ? 'Completed' : 'Non Completed' }}</td>
-            <td class="text-black">{{ $ds->status_delivery ?? '-' }}</td>
+  <td>
+    @php
+    $totalDn = (int) \App\Models\Dn_Input::where('ds_number', $ds->ds_number)->sum('qty_dn');
+    $qtyDs = (int) $ds->qty;
+
+    if ($totalDn == 0) {
+        $status = 'not completed'; // biru
+    } elseif ($totalDn == $qtyDs) {
+        $status = 'partial';       // kuning
+    } elseif ($totalDn > $qtyDs) {
+        $status = 'completed';     // hijau
+    } else {
+        $status = 'not completed';
+    }
+@endphp
+
+@switch($status)
+    @case('completed')
+        <span class="badge bg-success">Completed</span>
+        @break
+    @case('partial')
+        <span class="badge bg-warning text-dark">Partial</span>
+        @break
+    @default
+        <span class="badge bg-primary">Not Completed</span>
+@endswitch
+</td>
             <td class="text-black">{{ $ds->qty ?? '-' }}</td>
             <td class="text-black">
                 <div class="d-flex justify-content-start gap-2">

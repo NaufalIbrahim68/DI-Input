@@ -4,17 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-
 class DsInput extends Model
 {
-   
-
     protected $table = 'ds_input';
     protected $primaryKey = 'ds_number';
-    public $incrementing = false; // karena bukan auto increment
+    public $incrementing = false; // karena ds_number bukan auto increment
     protected $keyType = 'string';
-
-    protected $dates = ['deleted_at'];
 
     protected $fillable = [
         'ds_number',
@@ -23,10 +18,15 @@ class DsInput extends Model
         'qty',
         'di_type',
         'di_status',
-        'di_received_date_string', 
         'di_received_time',
-        'created_at',
-        'updated_at',
-        'flag'
+        'di_received_date_string',
+        'flag',
+        'status_delivery', // hanya status, bukan data DN
     ];
+
+    // Relasi: satu DS bisa punya banyak DN
+    public function dn()
+    {
+        return $this->hasMany(Dn_Input::class, 'ds_number', 'ds_number');
+    }
 }

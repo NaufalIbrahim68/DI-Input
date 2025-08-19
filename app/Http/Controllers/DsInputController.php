@@ -175,14 +175,36 @@ public function createDn($ds_number)
 public function storeDn(Request $request, $ds_number)
 {
     $request->validate([
-        'dn_number' => 'required|string|max:50',
+        'dn_number'  => 'required|string|max:50',
+        'quality_dn' => 'required|integer|min:1',
     ]);
 
     $ds = DsInput::where('ds_number', $ds_number)->firstOrFail();
-    $ds->dn_number = $request->dn_number;
+
+    // Simpan data DN
+    \App\Models\Dn_Input::create([
+        'ds_number' => $ds->ds_number,
+        'dn_number' => $request->dn_number,
+        'qty'       => $ds->qty,
+        'qty_dn'    => $request->quality_dn,
+    ]);
+
+    // Hitung total qty_dn untuk DS ini
+    $totalDn = \App\Models\Dn_Input::where('ds_number', $ds->ds_number)->sum('qty_dn');
+
+    // Tentukan status delivery
+    if ($totalDn == 0) {
+        $ds->status_delivery = 'Not Completed';  // biru
+    } elseif ($totalDn < $ds->qty) {
+        $ds->status_delivery = 'Partial';        // kuning
+    } else {
+        $ds->status_delivery = 'Completed';      // hijau
+    }
+
     $ds->save();
 
-    return redirect()->route('ds_input.index')->with('success', 'Nomor DN berhasil disimpan.');
+    return redirect()->route('ds_input.index')
+        ->with('success', 'Nomor DN & Quantity DN berhasil disimpan.');
 }
 
 }
