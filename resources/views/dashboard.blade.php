@@ -231,68 +231,76 @@
       }
 
       // Fungsi render chart status preparation (kanan)
-      function renderStatusChart() {
-        const ctx = document.getElementById('statusChart').getContext('2d');
+     function renderStatusChart() {
+  const ctx = document.getElementById('statusChart').getContext('2d');
 
-        // Hapus chart sebelumnya jika ada
-        if (statusChartInstance) {
-          statusChartInstance.destroy();
-        }
+  // Hapus chart sebelumnya jika ada
+  if (statusChartInstance) {
+    statusChartInstance.destroy();
+  }
 
-        const completed = statusData.completed || 0;
-        const nonCompleted = statusData.non_completed || 0;
-        const total = completed + nonCompleted;
+  const completed = statusData.completed || 0;
+  const nonCompleted = statusData.non_completed || 0;
 
-        statusChartInstance = new Chart(ctx, {
-          type: 'doughnut',
-          data: {
-            labels: ['Completed', 'Non Completed'],
-            datasets: [{
-              data: [completed, nonCompleted],
-              backgroundColor: [
-                'rgba(34, 197, 94, 0.8)', // hijau untuk completed
-                'rgba(239, 68, 68, 0.8)'  // merah untuk non-completed
-              ],
-              borderColor: [
-                'rgba(34, 197, 94, 1)',
-                'rgba(239, 68, 68, 1)'
-              ],
-              borderWidth: 2,
-              hoverBackgroundColor: [
-                'rgba(34, 197, 94, 0.9)',
-                'rgba(239, 68, 68, 0.9)'
-              ]
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                position: 'bottom',
-                labels: {
-                  color: '#000',
-                  padding: 20,
-                  usePointStyle: true
-                }
-              },
-              tooltip: {
-                backgroundColor: 'rgba(0,0,0,0.7)',
-                titleColor: '#fff',
-                bodyColor: '#fff',
-                callbacks: {
-                  label: function(context) {
-                    const value = context.parsed;
-                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                    return `${context.label}: ${value} (${percentage}%)`;
-                  }
-                }
-              }
-            },
-            cutout: '60%'
+  statusChartInstance = new Chart(ctx, {
+    type: 'bar', // ganti menjadi bar chart
+    data: {
+      labels: ['Completed', 'Non Completed'],
+      datasets: [{
+        label: 'Jumlah',
+        data: [completed, nonCompleted],
+        backgroundColor: [
+          'rgba(34, 197, 94, 0.8)', // hijau
+          'rgba(239, 68, 68, 0.8)'  // merah
+        ],
+        borderColor: [
+          'rgba(34, 197, 94, 1)',
+          'rgba(239, 68, 68, 1)'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { color: '#000' },
+          title: {
+            display: true,
+            text: 'Jumlah',
+            color: '#000'
           }
-        });
+        },
+        x: {
+          ticks: { color: '#000' },
+          title: {
+            display: true,
+            text: 'Status',
+            color: '#000'
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false }, // hilangkan legenda
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          callbacks: {
+            label: function(context) {
+              const value = context.parsed.y;
+              const total = completed + nonCompleted;
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+              return `${context.label}: ${value} (${percentage}%)`;
+            }
+          }
+        }
       }
+    }
+  });
+}
 
       // Jalankan saat halaman selesai dimuat
       document.addEventListener('DOMContentLoaded', () => {

@@ -75,27 +75,23 @@ class DashboardController extends Controller
         // ==========================
         
         // Hitung tanggal 7 hari yang lalu dalam format string yang sesuai dengan database
-        $sevenDaysAgo = Carbon::now()->subDays(7)->format('Y-m-d');
-        
-        // Hitung completed (berdasarkan di_status = 'Completed')
-        $completed = DsInput::where('di_received_date_string', '>=', $sevenDaysAgo)
-            ->where('di_status', 'Completed')
-            ->count();
+       $sevenDaysAgo = Carbon::now()->subDays(7)->format('Y-m-d');
 
-        // Hitung non-completed (semua selain 'Completed')
-        $nonCompleted = DsInput::where('di_received_date_string', '>=', $sevenDaysAgo)
-            ->where(function($query) {
-                $query->where('di_status', '!=', 'Completed')
-                      ->orWhereNull('flag');
-            })
-            ->count();
+// Completed = flag = 1
+$completed = DsInput::where('di_received_date_string', '>=', $sevenDaysAgo)
+    ->where('flag', 1)
+    ->count();
 
-        // Format data untuk chart status
-        $statusData = [
-            'completed' => $completed,
-            'non_completed' => $nonCompleted,
-        ];
+// Non Completed = flag = 0
+$nonCompleted = DsInput::where('di_received_date_string', '>=', $sevenDaysAgo)
+    ->where('flag', 0)
+    ->count();
 
+// Format data untuk chart status
+$statusData = [
+    'completed' => $completed,
+    'non_completed' => $nonCompleted,
+];
         return view('dashboard', [
             'timeline' => $timeline,
             'chartLabels' => $groupedChartData->first()['labels'] ?? [],

@@ -84,7 +84,7 @@
                         <th>Supplier Part Number</th>
                         <th>Received Date</th>
                         <th>Received Time</th>
-                        <th>Status Prepartion</th>
+                        <th>Status Preparation</th>
                         <th>Status Delivery</th>
                          <th>Qty</th>
                         <th>Action</th>
@@ -182,15 +182,11 @@
                         
                         {{-- Status Preparation (pakai flag) --}}
                         <td>
-                            <select name="flag" class="form-control form-control-sm text-black">
-                                <option value="0" {{ $ds->flag == 0 ? 'selected' : '' }}>Non Completed</option>
-                                <option value="1" {{ $ds->flag == 1 ? 'selected' : '' }}>Completed</option>
-                            </select>
-                        </td>
-                        
-                        {{-- Status Delivery (kolom baru) --}}
-                        <td>
-                            <input type="text" name="status_delivery" class="form-control form-control-sm text-black" value="{{ $ds->status_delivery }}">
+                           <select name="flag" class="form-control form-control-sm text-black">
+    <option value="0" {{ $ds->flag == 0 ? 'selected' : '' }}>Non Completed</option>
+    <option value="1" {{ $ds->flag == 1 ? 'selected' : '' }}>Completed</option>
+</select>
+
                         </td>
                         
                         {{-- Qty --}}

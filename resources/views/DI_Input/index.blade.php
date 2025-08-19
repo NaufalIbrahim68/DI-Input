@@ -43,7 +43,7 @@
 
             <div class="table-responsive">
                 <table id="example" class="display" style="width: 100%">
-                    <thead class="bg-dark-100">
+                    <thead class="bg-dark-100 text-xs">
                         <tr>
                             <th class="border p-2 bg-black text-white">No</th>
                             <th class="border p-2 bg-black text-white">DI No</th>
@@ -59,7 +59,7 @@
                             <th class="border p-2 bg-black text-white">DI Received Time</th>
                         </tr>
                     </thead>
-                    <tbody>
+                     <tbody class="text-xs leading-tight">
                         @foreach($data as $index => $DI)
                             <tr>
                                 <td class="text-black border p-2">{{ $index + 1 }}</td>

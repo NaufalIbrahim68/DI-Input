@@ -56,7 +56,7 @@ class DsInputController extends Controller
         $query->whereIn('di_status', $statusFilter);
     }
 
-$dataDI = $query->orderBy('gate', 'asc')->get();
+    $dataDI = $query->orderBy('gate', 'asc')->get();
 
     if ($dataDI->isEmpty()) {
         return redirect()
@@ -64,13 +64,11 @@ $dataDI = $query->orderBy('gate', 'asc')->get();
             ->with('error', "Tidak ada data untuk tanggal {$selectedDate}.");
     }
 
+    // Hapus DS lama untuk tanggal ini supaya tidak duplikasi
+    DsInput::where('di_received_date_string', $selectedDate)->delete();
+
     $datePrefix = Carbon::parse($selectedDate)->format('ymd');
-
-    $lastDS = DsInput::where('ds_number', 'like', "DS-{$datePrefix}-%")
-        ->orderByDesc('ds_number')
-        ->value('ds_number');
-
-    $nextIncr = $lastDS ? ((int)substr($lastDS, -4)) + 1 : 1;
+    $nextIncr = 1; // mulai dari 1 lagi
 
     foreach ($dataDI as $row) {
         $dsNumber = "DS-{$datePrefix}-" . str_pad($nextIncr, 4, '0', STR_PAD_LEFT);
@@ -84,31 +82,25 @@ $dataDI = $query->orderBy('gate', 'asc')->get();
         ];
         $finalStatus = $statusMap[$statusRaw] ?? 'Created';
 
-        $exists = DsInput::where('ds_number', $dsNumber)
-            ->where('supplier_part_number', $row->supplier_part_number)
-            ->exists();
-
-        if (!$exists) {
-            DsInput::create([
-                'ds_number' => $dsNumber,
-                'gate' => $row->gate,
-                'supplier_part_number' => $row->supplier_part_number,
-                'qty' => $row->qty,
-                'di_type' => $row->di_type,
-                'di_status' => $finalStatus,
-                'di_received_time' => $row->di_received_time,
-                'di_received_date_string' => $row->di_received_date_string,
-                'flag' => 0,
-            ]);
-        }
+        DsInput::create([
+            'ds_number' => $dsNumber,
+            'gate' => $row->gate,
+            'supplier_part_number' => $row->supplier_part_number,
+            'qty' => $row->qty,
+            'di_type' => $row->di_type,
+            'di_status' => $finalStatus,
+            'di_received_time' => $row->di_received_time,
+            'di_received_date_string' => $row->di_received_date_string,
+            'flag' => 0,
+        ]);
     }
 
-   return redirect()->route('ds_input.index', [
-    'selected_date' => $selectedDate,
-    'status'        => $statusFilter,
-]);
-
+    return redirect()->route('ds_input.index', [
+        'selected_date' => $selectedDate,
+        'status'        => $statusFilter,
+    ])->with('success', "DS untuk tanggal {$selectedDate} berhasil digenerate");
 }
+
 
     public function generateFromDate(Request $request)
     {
@@ -128,30 +120,27 @@ $dataDI = $query->orderBy('gate', 'asc')->get();
     }
 public function update(Request $request, $ds_number)
 {
-    $request->validate([
-        'gate' => 'required|string',
-        'supplier_part_number' => 'required|string',
-        'qty' => 'required|integer',
-        'di_type' => 'required|string',
-        'di_status' => 'required|string',
-        'di_received_date_string' => 'required|date',
-        'di_received_time' => 'required',
-        'flag' => 'required|integer',
-    ]);
+  $request->validate([
+    'gate' => 'required|string',
+    'supplier_part_number' => 'required|string',
+    'qty' => 'required|integer',
+    'di_type' => 'required|string',
+    'di_received_date_string' => 'required|date',
+    'di_received_time' => 'required',
+    'flag' => 'required|integer',
+]);
 
     $dsInput = DsInput::where('ds_number', $ds_number)->firstOrFail();
 
-    $dsInput->update([
-        'gate' => $request->gate,
-        'supplier_part_number' => $request->supplier_part_number,
-        'qty' => $request->qty,
-        'di_type' => $request->di_type,
-        'di_status' => $request->di_status,
-        'di_received_date_string' => $request->di_received_date_string,
-        'di_received_time' => $request->di_received_time,
-        'flag' => $request->flag,
-    ]);
-
+  $dsInput->update([
+    'gate' => $request->gate,
+    'supplier_part_number' => $request->supplier_part_number,
+    'qty' => $request->qty,
+    'di_type' => $request->di_type,
+    'di_received_date_string' => $request->di_received_date_string,
+    'di_received_time' => $request->di_received_time,
+    'flag' => $request->flag,
+]);
     return redirect()->route('ds_input.index', [
         'page' => $request->input('page', 1),
     ])->with('success', 'Data DS berhasil diperbarui.');
