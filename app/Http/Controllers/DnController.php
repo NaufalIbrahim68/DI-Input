@@ -5,24 +5,39 @@ namespace App\Http\Controllers;
 use App\Models\Dn_Input;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\DnExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class DnController extends Controller
 {   
-    public function index()
+    public function index(Request $request)
     {
-        // Join ds_input dengan dn_input
-       $dnData = DB::table('ds_input as ds')
-    ->leftJoin('dn_input as d', 'ds.ds_number', '=', 'd.ds_number')
-    ->select(
-        'ds.ds_number',
-        'ds.qty as ds_qty',
-        'd.dn_number',
-        'd.qty_dn as dn_qty', // gunakan qty_dn bukan qty
-        'd.created_at'
-    )
-    ->get();
+       $selectedDate = $request->input('selected_date');
+$dnData = collect(); // default kosong
 
-        return view('dn.index', compact('dnData'));
+if (!empty($selectedDate)) {
+    // baru query dijalankan
+}
+        // hanya jalankan query kalau ada tanggal
+        if (!empty($selectedDate)) {
+            $dnData = DB::table('dn_input as d')
+                ->leftJoin('ds_input as ds', 'd.ds_number', '=', 'ds.ds_number')
+                ->select(
+                    'd.id',
+                    'd.ds_number',
+                    'd.dn_number',
+                    'd.qty_dn',
+                    'd.created_at',
+                    'd.updated_at',
+                    'ds.qty as qty_ds', // ambil qty dari DS
+                    'ds.di_received_date_string'
+                )
+                ->whereDate('ds.di_received_date_string', $selectedDate)
+                ->get();
+        }
+
+        return view('dn.index', compact('dnData', 'selectedDate'));
     }
 
     public function create($ds_number)
@@ -33,29 +48,73 @@ class DnController extends Controller
             return redirect()->route('dn.index')->with('error', 'DS tidak ditemukan');
         }
 
-        return view('dn.create', compact('ds'));
+        return view('Ds_Input.dn_form', compact('ds'));
     }
 
-   public function store(Request $request, $ds_number)
+    public function store(Request $request, $ds_number)
+    {
+        $request->validate([
+            'dn_number' => 'required|string',
+            'qty_dn'    => 'required|integer|min:1',
+        ]);
+
+        Dn_Input::create([
+            'ds_number' => $ds_number,
+            'dn_number' => $request->dn_number,
+            'qty'       => $request->qty_dn,  
+            'qty_dn'    => $request->qty_dn,  
+        ]);
+
+        return redirect()->route('dn.create', $ds_number)
+                        ->with('success', 'Data DN berhasil disimpan!');
+    }
+
+    public function exportPdf(Request $request)
 {
-    $request->validate([
-        'dn_number' => 'required|string',
-        'qty_dn'    => 'required|integer|min:1',
-    ]);
+    $selectedDate = $request->input('selected_date');
+    $dnData = collect();
 
-    // Cari DS terkait
-    $ds = \App\Models\DsInput::where('ds_number', $ds_number)->firstOrFail();
+    if (!empty($selectedDate)) {
+        $dnData = DB::table('dn_input as d')
+            ->leftJoin('ds_input as ds', 'd.ds_number', '=', 'ds.ds_number')
+            ->select(
+                'd.id',
+                'd.ds_number',
+                'd.dn_number',
+                'd.qty_dn',
+                'd.created_at',
+                'd.updated_at',
+                'ds.qty as qty_ds',
+                'ds.di_received_date_string'
+            )
+            ->whereDate('ds.di_received_date_string', $selectedDate)
+            ->get();
+    } else {
+        // kalau tidak ada filter, ambil semua
+        $dnData = DB::table('dn_input as d')
+            ->leftJoin('ds_input as ds', 'd.ds_number', '=', 'ds.ds_number')
+            ->select(
+                'd.id',
+                'd.ds_number',
+                'd.dn_number',
+                'd.qty_dn',
+                'd.created_at',
+                'd.updated_at',
+                'ds.qty as qty_ds',
+                'ds.di_received_date_string'
+            )
+            ->get();
+    }
 
-    // Simpan data DN
-    Dn_Input::create([
-        'ds_number' => $ds->ds_number,
-        'dn_number' => $request->dn_number,
-        'qty'       => $ds->qty,        // ambil qty dari DS
-        'qty_dn'    => $request->qty_dn // ambil qty dari form input
-    ]);
+    $pdf = Pdf::loadView('dn.pdf', compact('dnData', 'selectedDate'))
+              ->setPaper('a4', 'landscape');
 
-    return redirect()->route('dn.index')
-                     ->with('success', 'DN berhasil ditambahkan');
+    return $pdf->download('DN_Data_'.now()->format('Ymd_His').'.pdf');
 }
 
+
+public function exportExcel()
+{
+    return Excel::download(new DnExport, 'DN_Data_'.now()->format('Ymd_His').'.xlsx');
+}
 }

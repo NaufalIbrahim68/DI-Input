@@ -22,22 +22,18 @@ Route::get('/register', [RegisterController::class, 'showRegisterForm'])->name('
 Route::post('/register', [RegisterController::class, 'register']);
 
 Route::get('/', function () {
-    return view('auth.login');
+    return redirect()->route('login');
 });
 
 // ========================================
 // 🔒 PROTECTED ROUTES (REQUIRES LOGIN)
 // ========================================
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth'])->group(function () {
 
-    // ===============================
-    // 📊 DASHBOARD
-    // ===============================
+    // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
 
-    // ===============================
-    // 📦 DI INPUT
-    // ===============================
+    // DI Input
     Route::prefix('DI_Input')->name('DI_Input.')->group(function () {
         Route::get('/', [DiInputController::class, 'index'])->name('index');
         Route::get('/create', [DiInputController::class, 'create'])->name('form');
@@ -48,32 +44,20 @@ Route::middleware('auth')->group(function () {
         Route::post('/import', [DiInputController::class, 'import'])->name('import');
     });
 
-    // ===============================
-    // 📤 DELIVERY (Import Excel DI + DS)
-    // ===============================
+    // Deliveries
     Route::prefix('deliveries')->name('deliveries.')->group(function () {
         Route::get('/', [DeliveryController::class, 'index'])->name('index');
-        Route::get('/import-form', function () {
-            return view('DI_Input.import');
-        })->name('import.form');
-        Route::get('/import', [DeliveryController::class, 'index'])->name('import.index');
+        Route::get('/import-form', fn() => view('DI_Input.import'))->name('import.form');
         Route::post('/import', [DeliveryController::class, 'import'])->name('import.submit');
         Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');
     });
 
-    // Route POST tanpa prefix
-    Route::post('/di-input/import', [DeliveryController::class, 'import'])->name('delivery.import');
-
-    // ===============================
-    // 🗓️ DS INPUT (Delivery Schedule)
-    // ===============================
+    // DS Input
     Route::prefix('ds-input')->name('ds_input.')->group(function () {
         Route::get('/', [DsInputController::class, 'index'])->name('index');
         Route::post('/import', [DsInputController::class, 'import'])->name('import');
         Route::post('/generate', [DsInputController::class, 'generateFromDate'])->name('generate');
-        Route::get('/import-form', function () {
-            return view('ds_input.import');
-        })->name('import.form');
+        Route::get('/import-form', fn() => view('ds_input.import'))->name('import.form');
 
         Route::get('/create', [DsInputController::class, 'create'])->name('create');
         Route::post('/', [DsInputController::class, 'store'])->name('store');
@@ -84,26 +68,21 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{ds_number}', [DsInputController::class, 'destroy'])->name('destroy');
     });
 
-    // ===============================
-    // 📑 DN INPUT (with prefix)
-    // ===============================
-   Route::prefix('dn')->name('dn.')->group(function () {
+   // DN Input
+Route::prefix('dn')->name('dn.')->group(function () {
     Route::get('/', [DnController::class, 'index'])->name('index');
     Route::get('/create/{ds_number}', [DnController::class, 'create'])->name('create');
+    Route::get('/export-pdf', [DnController::class, 'exportPdf'])->name('export_pdf');
+    Route::get('/export-excel', [DnController::class, 'exportExcel'])->name('export_excel');
     Route::post('/{ds_number}', [DnController::class, 'store'])->name('store');
 });
 
-
-    
-    // ===============================
-    // 🔍 CEK BAAN (Testing Route)
-    // ===============================
+    // Cek Baan
     Route::get('/cek-baan', function () {
         $data = DB::table('di_input')
             ->whereNotNull('baan_pn')
             ->orderBy('di_created_date', 'desc')
             ->first();
-
         return response()->json($data);
     })->name('cek_baan');
 });

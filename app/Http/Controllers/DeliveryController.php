@@ -54,7 +54,7 @@ class DeliveryController extends Controller
     // Field yang akan disimpan ke database
     const DB_FIELDS = [
         'di_no',
-        'gate', 
+        'gate',
         'po_number',
         'supplier_part_number',
         'supplier_part_number_desc',
@@ -93,7 +93,6 @@ class DeliveryController extends Controller
             $result = $this->processExcelData($data[0], $references);
 
             return $this->buildResponse($result);
-
         } catch (\Exception $e) {
             Log::error("❌ Import failed: " . $e->getMessage());
             Log::error("Stack trace: " . $e->getTraceAsString());
@@ -112,82 +111,97 @@ class DeliveryController extends Controller
             });
     }
 
-    private function processExcelData(array $rows, $references)
-    {
-        $createdCount = 0;
-        $duplicateCount = 0;
-        $failedCount = 0;
-        $failedRows = [];
-        $skippedRows = 0;
-        $processedDiNumbers = []; // Track processed DI Numbers to prevent duplicates
+   private function processExcelData(array $rows): array
+{
+    $createdCount   = 0;
+    $duplicateCount = 0;
+    $failedCount    = 0;
+    $skippedRows    = 0;
+    $batchData      = [];
 
-        $totalRows = count($rows);
-        Log::info("🔄 Starting to process $totalRows rows");
+    $totalRows = count($rows);
 
-        // DEBUG: Log beberapa baris pertama untuk melihat struktur data
-        for ($i = 0; $i < min(10, $totalRows); $i++) {
-            $diNoSample = $this->cleanValue($rows[$i][0] ?? '');
-            Log::info("📋 Row $i sample - DI No: '$diNoSample', Columns: " . count($rows[$i]));
+    // ✅ Ambil semua DI No existing sekali saja (lowercase biar konsisten)
+    $existingDiNumbers = DiInputModel::pluck('di_no')->map(fn($v) => strtolower($v))->toArray();
+    $existingDiNumbers = array_flip($existingDiNumbers); // biar lookup O(1)
+
+    foreach ($rows as $index => $row) {
+        // Skip baris header
+        if ($index < self::HEADER_ROWS_TO_SKIP) {
+            $skippedRows++;
+            continue;
         }
 
-        foreach ($rows as $index => $row) {
-            // Skip header rows dan empty rows
-            if ($index <= self::HEADER_ROWS_TO_SKIP || $this->isEmptyRow($row)) {
-                $skippedRows++;
-                Log::debug("⏭️ Row " . ($index + 1) . ": Skipped (header/empty)");
-                continue;
-            }
+        $diNo       = isset($row['di_no']) ? trim($row['di_no']) : null;
+        $gate       = isset($row['gate']) ? trim($row['gate']) : null;
+        $supplierPN = isset($row['supplier_part_number']) ? trim($row['supplier_part_number']) : null;
 
-            if (!$this->validateRequiredFields($row)) {
-                $failedRows[] = $index + 1;
-                $failedCount++;
-                Log::warning("❌ Row " . ($index + 1) . ": Validation failed");
-                continue;
-            }
-
-            $diNo = $this->cleanValue($row[0] ?? '');
-            
-            // DEBUG: Log setiap DI No yang diproses
-            Log::debug("🔍 Row " . ($index + 1) . ": Processing DI No: '$diNo'");
-            
-            // Cek duplicate di memory processing (untuk file yang sama)
-            if (in_array($diNo, $processedDiNumbers)) {
-                $duplicateCount++;
-                Log::warning("⚠️ Row " . ($index + 1) . ": Duplicate DI No in same file: $diNo");
-                continue;
-            }
-
-            $status = $this->processDiInputRow($row, $references, $index);
-            
-            if ($status === 'created') {
-                $createdCount++;
-                $processedDiNumbers[] = $diNo; // Track berhasil diproses
-                Log::info("✅ Row " . ($index + 1) . ": Created DI No: $diNo (Total created: $createdCount)");
-                
-                if ($createdCount % 25 == 0) {
-                    Log::info("📊 Progress: $createdCount rows processed successfully");
-                }
-            } elseif ($status === 'duplicate') {
-                $duplicateCount++;
-                Log::info("⚠️ Row " . ($index + 1) . ": Already exists in DB: $diNo");
-            } else {
-                $failedRows[] = $index + 1;
-                $failedCount++;
-                Log::error("❌ Row " . ($index + 1) . ": Failed to process: $diNo");
-            }
+        // ✅ Validasi wajib
+        if (empty($diNo) || empty($gate) || empty($supplierPN)) {
+            $failedCount++;
+            Log::warning("❌ Skipped row $index: Missing required fields", $row);
+            continue;
         }
 
-        Log::info("✅ Processing completed - Total rows: $totalRows, Created: $createdCount, Duplicates: $duplicateCount, Failed: $failedCount, Skipped: $skippedRows");
+        // ✅ Cek duplicate (di memory & DB)
+        if (isset($existingDiNumbers[strtolower($diNo)])) {
+            $duplicateCount++;
+            continue;
+        }
 
-        return [
-            'created' => $createdCount,
-            'duplicates' => $duplicateCount,
-            'failed' => $failedCount,
-            'failed_rows' => $failedRows,
-            'skipped' => $skippedRows,
-            'total_processed' => $totalRows - $skippedRows
+        // Siapkan data
+        $updateData = [
+            'di_no'                  => $diNo,
+            'gate'                   => $gate,
+            'supplier_part_number'   => $supplierPN,
+            'qty'                    => $this->parseQty($row['qty'] ?? null),
+            'di_type'                => $row['di_type'] ?? null,
+            'di_status'              => $row['di_status'] ?? null,
+            'di_received_date'       => $this->parseDate($row['di_received_date'] ?? null),
+            'di_received_time'       => $this->parseTime($row['di_received_time'] ?? null),
+            'baan_pn'                => null,
+            'visteon_pn'             => null,
+            'created_at'             => now(),
+            'updated_at'             => now(),
         ];
+
+        // Lookup Part Number
+        $part = DiPartNumber::where('supplier_part_number', $supplierPN)->first();
+        if ($part) {
+            $updateData['baan_pn']    = $part->baan_pn;
+            $updateData['visteon_pn'] = $part->visteon_pn;
+        } else {
+            $failedCount++;
+            Log::warning("⚠️ Supplier Part Number not found: $supplierPN (Row: $index)");
+            continue;
+        }
+
+        // Tambahkan ke batch
+        $batchData[] = $updateData;
+        $existingDiNumbers[strtolower($diNo)] = true; // supaya di loop selanjutnya dianggap duplicate
     }
+
+    // ✅ Sekali insert
+    if (!empty($batchData)) {
+        $created = DiInputModel::insertOrIgnore($batchData);
+        $createdCount += $created;
+    }
+
+    // Hitung total processed lebih konsisten
+    $totalProcessed = $createdCount + $duplicateCount + $failedCount;
+
+    Log::info("📊 Import Summary: processed=$totalProcessed, created=$createdCount, duplicate=$duplicateCount, failed=$failedCount, skipped=$skippedRows");
+
+    return [
+        'total_rows'      => $totalRows,
+        'total_processed' => $totalProcessed,
+        'created'         => $createdCount,
+        'duplicates'      => $duplicateCount,
+        'failed'          => $failedCount,
+        'skipped'         => $skippedRows,
+    ];
+}
+
 
     private function processDiInputRow(array $row, $references, int $rowIndex)
     {
@@ -196,7 +210,7 @@ class DeliveryController extends Controller
             return 'failed';
         }
 
-        // Cek existing di database
+        // Cek existing di databast
         $existing = DiInputModel::where('di_no', $diNo)->first();
         if ($existing) {
             Log::info("⚠️ Row " . ($rowIndex + 1) . ": DI No already exists in DB: $diNo");
@@ -211,18 +225,17 @@ class DeliveryController extends Controller
 
         try {
             DB::beginTransaction();
-            
+
             // Insert ke di_input
             DiInputModel::create($updateData);
-            
+
             // Generate DS (optional - bisa dipisah ke proses lain)
             // $this->generateDsFromDiRow($updateData);
-            
+
             DB::commit();
-            
+
             Log::debug("✅ Row " . ($rowIndex + 1) . ": Created DI No: $diNo");
             return 'created';
-            
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("❌ Row " . ($rowIndex + 1) . ": Failed to create DI No: $diNo | " . $e->getMessage());
@@ -233,13 +246,13 @@ class DeliveryController extends Controller
     private function prepareDiInputData(array $row, $reference = null)
     {
         $updateData = [];
-        
+
         // Hanya ambil field yang diperlukan untuk database
         foreach (self::DB_FIELDS as $fieldName) {
             $excelIndex = array_search($fieldName, self::EXCEL_COLUMN_MAPPING);
             if ($excelIndex !== false) {
                 $rawValue = $row[$excelIndex] ?? null;
-                
+
                 switch ($fieldName) {
                     case 'qty':
                         $updateData[$fieldName] = $this->parseQty($rawValue);
@@ -288,56 +301,55 @@ class DeliveryController extends Controller
         $diNo = $this->cleanValue($row[0] ?? '');
         $gate = $this->cleanValue($row[1] ?? '');
         $supplierPN = $this->cleanValue($row[6] ?? '');
-        
-        return !empty($diNo) && 
-               strtolower($diNo) !== 'di no' && 
-               !empty($gate) && 
-               !empty($supplierPN);
+
+        return !empty($diNo) &&
+            strtolower($diNo) !== 'di no' &&
+            !empty($gate) &&
+            !empty($supplierPN);
     }
 
-    private function buildResponse(array $result)
-    {
-        $messages = [];
-        
-        if ($result['created'] > 0) {
-            $messages[] = "✅ {$result['created']} data berhasil diimpor ke DI Input";
-        }
-        
-        if ($result['duplicates'] > 0) {
-            $messages[] = "⚠️ {$result['duplicates']} data duplicate (sudah ada)";
-        }
-        
-        if ($result['skipped'] > 0) {
-            $messages[] = "⏭️ {$result['skipped']} baris dilewati (header/kosong)";
-        }
-        
-        if ($result['failed'] > 0) {
-            $failedRowsStr = implode(', ', array_slice($result['failed_rows'], 0, 10));
-            if (count($result['failed_rows']) > 10) $failedRowsStr .= '...';
-            $messages[] = "❌ {$result['failed']} gagal (baris: $failedRowsStr)";
-        }
+   private function buildResponse(array $result)
+{
+    $messages = [];
 
-        // DEBUGGING INFO
-        $totalExpected = $result['total_processed'] ?? 'unknown';
-        $totalActual = $result['created'] + $result['duplicates'] + $result['failed'];
-        $messages[] = "📊 Expected: $totalExpected, Actual processed: $totalActual";
-
-        $fullMessage = implode(' | ', $messages);
-
-        // ALERT jika ada discrepancy
-        if ($result['created'] > ($result['total_processed'] ?? $result['created'])) {
-            Log::alert("🚨 POTENTIAL DUPLICATE PROCESSING: Created ({$result['created']}) > Expected ({$result['total_processed']})");
-            $fullMessage = "🚨 WARNING: Possible duplicate processing detected! " . $fullMessage;
-        }
-
-        if ($result['created'] > 0) {
-            return back()->with('success', $fullMessage);
-        } elseif ($result['duplicates'] > 0 && $result['failed'] === 0) {
-            return back()->with('warning', $fullMessage);
-        } else {
-            return back()->with('error', "❌ Tidak ada data berhasil diimpor. $fullMessage");
-        }
+    if ($result['created'] > 0) {
+        $messages[] = "✅ {$result['created']} data berhasil diimpor ke DI Input";
     }
+
+    if ($result['duplicates'] > 0) {
+        $messages[] = "❌ {$result['duplicates']} data gagal diimpor karena sudah ada (duplicate)";
+    }
+
+    if ($result['skipped'] > 0) {
+        $messages[] = "⏭️ {$result['skipped']} baris dilewati (header/kosong)";
+    }
+
+    if ($result['failed'] > 0) {
+        $failedRowsStr = implode(', ', array_slice($result['failed_rows'], 0, 10));
+        if (count($result['failed_rows']) > 10) $failedRowsStr .= '...';
+        $messages[] = "❌ {$result['failed']} gagal diproses (baris: $failedRowsStr)";
+    }
+
+    // DEBUG INFO
+    $totalExpected = $result['total_processed'] ?? 'unknown';
+    $totalActual = $result['created'] + $result['duplicates'] + $result['failed'];
+    $messages[] = "📊 Expected: $totalExpected, Actual processed: $totalActual";
+
+    $fullMessage = implode(' | ', $messages);
+
+    // ALERT jika ada discrepancy
+    if ($result['created'] > ($result['total_processed'] ?? $result['created'])) {
+        Log::alert("🚨 POTENTIAL DUPLICATE PROCESSING: Created ({$result['created']}) > Expected ({$result['total_processed']})");
+        $fullMessage = "🚨 WARNING: Possible duplicate processing detected! " . $fullMessage;
+    }
+
+    // ✅ logika notifikasi diperbaiki
+    if ($result['created'] > 0) {
+        return back()->with('success', $fullMessage);
+    } else {
+        return back()->with('error', "❌ Tidak ada data berhasil diimpor. $fullMessage");
+    }
+}
 
     private function parseQty($qty)
     {

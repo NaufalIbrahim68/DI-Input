@@ -21,9 +21,11 @@
     <input type="number" name="qty_dn" id="qty_dn" 
            class="form-control" value="{{ old('qty_dn') }}" min="1">
 </div>
-
             <button type="submit" class="btn btn-success">💾 Simpan</button>
-            <a href="{{ route('dn.index') }}" class="btn btn-secondary">⬅ Kembali</a>
+            @if(session('success'))
+    <div class="alert alert-success">{{ session('success') }}</div>
+@endif
+            <a href="{{ route('ds_input.index') }}" class="btn btn-secondary">⬅ Kembali</a>
         </form>
     </div>
 </div>

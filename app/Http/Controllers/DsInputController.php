@@ -183,11 +183,11 @@ public function storeDn(Request $request, $ds_number)
 
     // Tentukan status delivery
     if ($totalDn == 0) {
-        $ds->status_delivery = 'Not Completed';  // biru
+        $ds->status_delivery = 'Not Completed';  
     } elseif ($totalDn < $ds->qty) {
-        $ds->status_delivery = 'Partial';        // kuning
+        $ds->status_delivery = 'Partial';        
     } else {
-        $ds->status_delivery = 'Completed';      // hijau
+        $ds->status_delivery = 'Completed';      
     }
 
     $ds->save();

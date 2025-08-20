@@ -8,71 +8,7 @@
         <h1 class="text-4xl text-dark fw-bold">Data DS</h1>
     </div>
 
-    {{-- Flash message --}}
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div> 
-    @elseif(session('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
-    @endif
-
-    {{-- Form Generate di Tengah --}}
-    <div class="d-flex justify-content-center mb-4">
-        <form id="generateForm" action="{{ route('ds_input.generate') }}" method="POST" class="d-flex align-items-center gap-3 p-3 border rounded bg-light">
-            @csrf
-            <label class="mb-0 fw-semibold text-black">Pilih Tanggal:</label>
-            <input type="date" name="selected_date" class="form-control" style="width: 200px;" required>
-            <button type="submit" class="btn btn-primary px-4">
-                Generate Data From DI
-            </button>
-        </form>
-    </div>
-
-    {{-- Form Search di Kanan --}}
-    <div class="d-flex justify-content-end mb-3">
-        <form method="GET" action="{{ request()->url() }}" class="d-flex align-items-center gap-2">
-            @foreach(request()->except(['search', 'page']) as $key => $value)
-                <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-            @endforeach
-            <input type="text" name="search" class="form-control form-control-sm" 
-                   placeholder="Search DS Number, Gate, Part..." 
-                   value="{{ request('search') }}" style="width: 250px;">
-            <button class="btn btn-outline-secondary btn-sm px-3" type="submit">
-                <i class="fas fa-search"></i>
-            </button>
-            @if(request('search'))
-                <a href="{{ request()->url() }}" class="btn btn-outline-danger btn-sm">
-                    <i class="fas fa-times"></i>
-                </a>
-            @endif
-        </form>
-    </div>
-
- {{-- Info Messages --}}
-@if(!$selectedDate)
-    {{-- User belum memilih tanggal --}}
-    <div class="alert alert-info text-center">
-        <i class="fas fa-info-circle me-2"></i>
-        Pilih tanggal dan klik "Generate Data from DI" untuk menampilkan data DS.
-    </div>
-@elseif($dsInputs->isEmpty())
-    {{-- Data kosong untuk tanggal terpilih --}}
-    <div class="alert alert-warning text-center">
-        <i class="fas fa-exclamation-triangle me-2"></i>
-        Tidak ada data untuk tanggal 
-        <strong>{{ \Carbon\Carbon::parse($selectedDate)->format('d F Y') }}</strong>.
-    </div>
-@else
-    {{-- Data ditemukan untuk tanggal terpilih --}}
-    <div class="alert alert-success text-center">
-        <i class="fas fa-check-circle me-2"></i>
-        Menampilkan data DS untuk tanggal 
-        <strong>{{ \Carbon\Carbon::parse($selectedDate)->format('d F Y') }}</strong>
-        @if(request('search'))
-            dengan pencarian "<strong>{{ request('search') }}</strong>"
-        @endif
-        - Ditemukan <strong>{{ $dsInputs->total() }}</strong> data
-    </div>
-@endif
+   
         <div class="table-responsive" style="overflow-x: auto;">
                <table class="table table-bordered table-sm bg-white small">
                 <thead class="bg-black text-white">
@@ -119,13 +55,13 @@
 
 @switch($status)
     @case('completed')
-        <span class="badge bg-success">Completed</span>
+        <span class="badge bg-success text-white">Completed</span>
         @break
     @case('partial')
-        <span class="badge bg-warning text-dark">Partial</span>
+        <span class="badge bg-warning text-white">Partial</span>
         @break
     @default
-        <span class="badge bg-primary">Not Completed</span>
+        <span class="badge bg-primary text-white">Non Completed</span>
 @endswitch
 </td>
             <td class="text-black">{{ $ds->qty ?? '-' }}</td>
