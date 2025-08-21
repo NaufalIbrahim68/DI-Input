@@ -2,12 +2,15 @@
 
 namespace App\Imports;
 
+use App\Models\DsInput; // Gunakan Model bukan DB langsung
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Carbon\Carbon;
+
 
 class DsInputImport implements ToCollection, WithHeadingRow
 {
@@ -29,57 +32,44 @@ class DsInputImport implements ToCollection, WithHeadingRow
                 // \Log::info('Available columns: ' . implode(', ', array_keys($row->toArray())));
                 
                 // Coba berbagai kemungkinan nama kolom untuk status
-                $statusValue = $row['di_status'] ?? 
-                              $row['DI Status'] ?? 
-                              $row['di status'] ?? 
-                              $row['status'] ?? '';
-                
-                $status = strtolower(trim($statusValue));
-                $statusMap = [
-                    'created' => 'Created',
-                    'received' => 'Received', 
-                    'used' => 'Used'
-                ];
-                
+             
+              
                 // Gunakan status dari mapping, jika tidak ada atau kosong gunakan default
-                $finalStatus = $statusMap[$status] ?? 'Created';
                 
                 // Debug: log status yang diproses
                 // Uncomment line di bawah untuk debug
                 // \Log::info("Row " . ($index + 1) . " - Original status: '$statusValue', Final status: '$finalStatus'");
                 
                 // Validasi status - hanya terima 3 status yang valid
-                if (!in_array($finalStatus, ['Created', 'Received', 'Used'])) {
-                    $finalStatus = 'Created';
-                }
+               
+
+                // Parse tanggal dengan lebih baik
+                $receivedDate = $this->parseDate($row['di_received_date'] ?? 
+                                               $row['DI Received Date'] ?? 
+                                               $row['di_received_date_string'] ?? null);
 
                 // Cek duplikat
                 $supplierPartNumber = $row['supplier_part_number'] ?? 
                                     $row['Supplier Part Number'] ?? '';
                                     
-                $exists = DB::table('ds_input')
-                    ->where('ds_number', $dsNumber)
+                $exists = DsInput::where('ds_number', $dsNumber)
                     ->where('supplier_part_number', $supplierPartNumber)
                     ->exists();
 
                 if (!$exists) {
-                    DB::table('ds_input')->insert([
+                    // Gunakan Model untuk konsistensi
+                    DsInput::create([
                         'ds_number' => $dsNumber,
                         'gate' => $row['gate'] ?? $row['Gate'] ?? null,
-                        'supplier_part_number' => $row['supplier_part_number'] ?? 
-                                                 $row['Supplier Part Number'] ?? null,
+                        'supplier_part_number' => $supplierPartNumber,
                         'qty' => isset($row['qty']) ? (int) $row['qty'] : 
                                 (isset($row['Qty']) ? (int) $row['Qty'] : 0),
                         'di_type' => $row['di_type'] ?? 
                                     $row['DI Type'] ?? 
                                     $row['di type'] ?? null,
-                        'di_status' => $finalStatus,
-                        'di_received_date_string' => $this->parseDate($row['di_received_date'] ?? 
-                                                                    $row['DI Received Date'] ?? null),
+                        'di_received_date_string' => $receivedDate,
                         'di_received_time' => $this->parseTime($row['di_received_time'] ?? 
                                                               $row['DI Received Time'] ?? null),
-                        'created_at' => now(),
-                        'updated_at' => now(),
                         'flag' => 0
                     ]);
                     $this->successCount++;
@@ -97,22 +87,24 @@ class DsInputImport implements ToCollection, WithHeadingRow
                     'error' => $e->getMessage(),
                     'data' => $row->toArray()
                 ];
+              Log::error("Import error on row " . ($index + 1) . ": " . $e->getMessage());
             }
         }
     }
 
     private function parseDate($date)
     {
-        if (empty($date)) return null;
-
-        try {
-            if (is_numeric($date)) {
-                return Carbon::instance(Date::excelToDateTimeObject($date))->format('Y-m-d');
-            }
-            return Carbon::parse($date)->format('Y-m-d');
-        } catch (\Exception $e) {
-            return null;
+         if (empty($date)) return null;
+    try {
+        if (is_numeric($date)) {
+            $excelDate = Carbon::instance(Date::excelToDateTimeObject($date));
+            return $excelDate->format('Y-m-d');
         }
+        return Carbon::parse($date)->format('Y-m-d');
+    } catch (\Exception $e) {
+        Log::error("Date parsing error: " . $e->getMessage());
+        return null;
+    }
     }
 
     private function parseTime($time)
@@ -120,23 +112,36 @@ class DsInputImport implements ToCollection, WithHeadingRow
         if (empty($time)) return null;
 
         try {
+            // Handle Excel time format (numeric - decimal representing time)
             if (is_numeric($time)) {
-                return Date::excelToDateTimeObject($time)->format('H:i:s');
+                // Excel time is stored as fraction of day
+                if ($time < 1) {
+                    $seconds = $time * 86400; // Convert to seconds
+                    $hours = floor($seconds / 3600);
+                    $minutes = floor(($seconds % 3600) / 60);
+                    $secs = $seconds % 60;
+                    return sprintf('%02d:%02d:%02d', $hours, $minutes, $secs);
+                } else {
+                    // Full datetime
+                    return Date::excelToDateTimeObject($time)->format('H:i:s');
+                }
             }
-            return date('H:i:s', strtotime($time));
+            
+            // Handle string time
+            return Carbon::parse($time)->format('H:i:s');
+            
         } catch (\Exception $e) {
+         Log::error("Date parsing error for value '$date': " . $e->getMessage());
             return null;
         }
     }
 
     private function generateDsNumber()
     {
-        $today = now()->format('Ymd');
+        $today = now()->format('ymd'); // Sesuaikan dengan format controller
         $prefix = "DS-{$today}-";
 
-        $last = DB::table('ds_input')
-            ->whereDate('created_at', now()->toDateString())
-            ->where('ds_number', 'like', "$prefix%")
+        $last = DsInput::where('ds_number', 'like', "$prefix%")
             ->orderByDesc('ds_number')
             ->value('ds_number');
 

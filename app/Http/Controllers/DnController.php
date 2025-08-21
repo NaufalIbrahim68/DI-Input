@@ -57,14 +57,14 @@ if (!empty($selectedDate)) {
             'dn_number' => 'required|string',
             'qty_dn'    => 'required|integer|min:1',
         ]);
+$ds = DB::table('ds_input')->where('ds_number', $ds_number)->first();
 
-        Dn_Input::create([
-            'ds_number' => $ds_number,
-            'dn_number' => $request->dn_number,
-            'qty'       => $request->qty_dn,  
-            'qty_dn'    => $request->qty_dn,  
-        ]);
-
+Dn_Input::create([
+    'ds_number' => $ds_number,
+    'dn_number' => $request->dn_number,
+    'qty_dn'    => $request->qty_dn,  
+    'qty'       => $ds->qty, // qty DS
+]);
         return redirect()->route('dn.create', $ds_number)
                         ->with('success', 'Data DN berhasil disimpan!');
     }
@@ -113,8 +113,17 @@ if (!empty($selectedDate)) {
 }
 
 
-public function exportExcel()
+
+
+public function export(Request $request)
 {
-    return Excel::download(new DnExport, 'DN_Data_'.now()->format('Ymd_His').'.xlsx');
+    $selectedDate = $request->query('selected_date'); // atau 'tanggal', sesuaikan dengan input filter
+
+    if (!$selectedDate) {
+        return redirect()->back()->with('error', 'Harap pilih tanggal terlebih dahulu.');
+    }
+
+    return Excel::download(new DnExport($selectedDate), 'dn_export_'.now()->format('Ymd_His').'.xlsx');
 }
+
 }

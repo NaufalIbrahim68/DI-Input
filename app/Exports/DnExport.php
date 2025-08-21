@@ -10,8 +10,7 @@ class DnExport implements FromCollection, WithHeadings
 {
     protected $selectedDate;
 
-    // optional: biar bisa kirim filter tanggal dari controller
-    public function __construct($selectedDate = null)
+    public function __construct($selectedDate)
     {
         $this->selectedDate = $selectedDate;
     }
@@ -28,8 +27,12 @@ class DnExport implements FromCollection, WithHeadings
                 'ds.di_received_date_string as received_date'
             );
 
+        // filter tanggal wajib
         if (!empty($this->selectedDate)) {
             $query->whereDate('ds.di_received_date_string', $this->selectedDate);
+        } else {
+            // optional: kembalikan collection kosong jika tanggal tidak ada
+            return collect([]);
         }
 
         return $query->get();

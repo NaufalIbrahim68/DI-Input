@@ -52,28 +52,28 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');
     });
 
-    // DS Input
-    Route::prefix('ds-input')->name('ds_input.')->group(function () {
-        Route::get('/', [DsInputController::class, 'index'])->name('index');
-        Route::post('/import', [DsInputController::class, 'import'])->name('import');
-        Route::post('/generate', [DsInputController::class, 'generateFromDate'])->name('generate');
-        Route::get('/import-form', fn() => view('ds_input.import'))->name('import.form');
+    // DS INPUT
+   Route::prefix('ds-input')->name('ds_input.')->group(function () {
+    Route::get('/', [DsInputController::class, 'index'])->name('index');
+    Route::post('/import', [DsInputController::class, 'import'])->name('import');
+    Route::post('/generate', [DsInputController::class, 'generate'])->name('generate'); // <-- perbaikan
+    Route::get('/import-form', fn() => view('ds_input.import'))->name('import.form');
 
-        Route::get('/create', [DsInputController::class, 'create'])->name('create');
-        Route::post('/', [DsInputController::class, 'store'])->name('store');
-        Route::get('/{ds}/dn', [DsInputController::class, 'createDn'])->name('create_dn'); 
-        Route::post('/{ds}/dn', [DsInputController::class, 'storeDn'])->name('store_dn');
-        Route::get('/{ds_number}/edit', [DsInputController::class, 'edit'])->name('edit');
-        Route::put('/{ds_number}', [DsInputController::class, 'update'])->name('update');
-        Route::delete('/{ds_number}', [DsInputController::class, 'destroy'])->name('destroy');
-    });
+    Route::get('/create', [DsInputController::class, 'create'])->name('create');
+    Route::post('/', [DsInputController::class, 'store'])->name('store');
+    Route::get('/{ds}/dn', [DsInputController::class, 'createDn'])->name('create_dn'); 
+    Route::post('/{ds}/dn', [DsInputController::class, 'storeDn'])->name('store_dn');
+    Route::get('/{ds_number}/edit', [DsInputController::class, 'edit'])->name('edit');
+    Route::put('/{ds_number}', [DsInputController::class, 'update'])->name('update');
+    Route::delete('/{ds_number}', [DsInputController::class, 'destroy'])->name('destroy');
+});
 
    // DN Input
 Route::prefix('dn')->name('dn.')->group(function () {
     Route::get('/', [DnController::class, 'index'])->name('index');
     Route::get('/create/{ds_number}', [DnController::class, 'create'])->name('create');
     Route::get('/export-pdf', [DnController::class, 'exportPdf'])->name('export_pdf');
-    Route::get('/export-excel', [DnController::class, 'exportExcel'])->name('export_excel');
+   Route::get('/export-excel', [DnController::class, 'export'])->name('export_excel');
     Route::post('/{ds_number}', [DnController::class, 'store'])->name('store');
 });
 

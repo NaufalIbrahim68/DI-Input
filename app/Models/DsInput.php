@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class DsInput extends Model
 {
+    use HasFactory;
+
     protected $table = 'ds_input';
     protected $primaryKey = 'ds_number';
-    public $incrementing = false; // karena ds_number bukan auto increment
+    public $incrementing = false;
     protected $keyType = 'string';
 
     protected $fillable = [
@@ -17,16 +21,32 @@ class DsInput extends Model
         'supplier_part_number',
         'qty',
         'di_type',
-        'di_status',
         'di_received_time',
         'di_received_date_string',
         'flag',
-        'status_delivery', // hanya status, bukan data DN
+        'created_at',
+        'updated_at'
     ];
+
+    public $timestamps = true;
 
     // Relasi: satu DS bisa punya banyak DN
     public function dn()
     {
         return $this->hasMany(Dn_Input::class, 'ds_number', 'ds_number');
+    }
+
+    // Relasi: DS terkait ke banyak DI berdasarkan supplier_part_number
+    public function di()
+    {
+        return $this->hasMany(DiInputModel::class, 'supplier_part_number', 'supplier_part_number');
+    }
+
+    // Optional: helper format tanggal
+    public function getFormattedReceivedDateAttribute()
+    {
+        return $this->di_received_date_string
+            ? Carbon::parse($this->di_received_date_string)->format('Y-m-d')
+            : null;
     }
 }
