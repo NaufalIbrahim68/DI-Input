@@ -30,7 +30,7 @@
         @csrf
         <div class="d-flex align-items-center gap-2">
             <input type="date" name="selected_date" value="{{ request('tanggal') }}" class="form-control" style="width:200px;" required>
-            <button type="submit" class="btn btn-success">Generate DS</button>
+            <button type="submit" class="btn btn-success">Generate DI</button>
         </div>
     </form>
 </div>
