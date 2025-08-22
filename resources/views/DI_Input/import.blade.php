@@ -14,7 +14,7 @@
 
         <div class="card shadow-sm">
             <div class="card-body">
-               <form action="{{ route('DI_Input.import') }}" method="POST" enctype="multipart/form-data">
+              <form action="{{ route('deliveries.import.submit') }}" method="POST" enctype="multipart/form-data">
     @csrf
     <div class="mb-3">
         <label for="file" class="form-label">Pilih File Excel</label>

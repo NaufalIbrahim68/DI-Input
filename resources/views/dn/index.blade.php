@@ -24,7 +24,6 @@
                 <button type="submit" class="btn btn-primary px-4">
                     Tampilkan Data DN
                 </button>
-                <a href="{{ route('dn.index') }}" class="btn btn-secondary">Reset</a>
             </form>
         </div>
 

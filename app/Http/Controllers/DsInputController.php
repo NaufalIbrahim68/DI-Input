@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\DsInput;
 use App\Models\DiInputModel;
 use App\Imports\DsInputImport;
+use App\Models\Dn_Input;
 use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB; 
@@ -16,29 +17,26 @@ class DsInputController extends Controller
 public function index(Request $request)
 {
     $selectedDate = $request->query('tanggal');
-    $query = DsInput::query();
-    $diDataCount = 0;
+    $dsInputs = null; // default null jika tidak ada tanggal
 
     if (!empty($selectedDate)) {
-        // Hitung jumlah DI untuk tanggal ini
-        $diDataCount = DiInputModel::whereDate('di_received_date_string', $selectedDate)->count();
+        $query = DsInput::query();
 
         // Filter DS berdasarkan tanggal
         $query->whereDate('di_received_date_string', $selectedDate);
 
-        // Flash info jika DS kosong tapi ada DI
-        if ($query->count() == 0 && $diDataCount > 0) {
-            session()->flash('info', "Ada {$diDataCount} data DI untuk tanggal {$selectedDate}, tapi belum digenerate ke DS.");
-        }
+        $dsInputs = $query->orderBy('ds_number')
+            ->paginate(10)
+            ->through(function ($item) {
+                // Tambahkan properti format tanggal
+                $item->di_received_date_string_formatted = Carbon::parse($item->di_received_date_string)->format('d/m/Y');
+                return $item;
+            })
+            ->appends($request->only(['tanggal']));
     }
 
-    $dsInputs = $query->orderBy('ds_number')
-        ->paginate(10)
-        ->appends($request->only(['tanggal']));
-
-    return view('ds_input.index', compact('dsInputs', 'selectedDate', 'diDataCount'));
+    return view('ds_input.index', compact('dsInputs', 'selectedDate'));
 }
-
 public function generate(Request $request)
 {
     $request->validate([
@@ -49,45 +47,52 @@ public function generate(Request $request)
 
     // Ambil semua DI untuk tanggal itu
     $dataDI = DiInputModel::where('di_received_date_string', $selectedDate)->get();
-
     if ($dataDI->isEmpty()) {
-        return redirect()->back()->with('error', "Tidak ada data DI untuk tanggal {$selectedDate}.");
+        return redirect()->back()->with('error', "Tidak ada data Ds untuk tanggal {$selectedDate}.");
     }
 
-    $datePrefix = Carbon::parse($selectedDate)->format('ymd');
+    // Ambil semua DS yang sudah ada untuk tanggal itu
+    $existingDS = DsInput::whereDate('di_received_date_string', $selectedDate)
+        ->get()
+        ->keyBy('supplier_part_number'); // gunakan supplier_part_number sebagai key
 
-    // Ambil nomor DS terakhir untuk tanggal itu
-    $lastDS = DsInput::where('ds_number', 'like', "DS-{$datePrefix}-%")
+    $datePrefix = Carbon::parse($selectedDate)->format('dmy');
+
+    // Ambil nomor DS terakhir yang sudah ada untuk tanggal itu
+    $lastDSNumber = DsInput::where('ds_number', 'like', "DS-{$datePrefix}-%")
         ->orderByDesc('ds_number')
         ->value('ds_number');
 
-    $nextIncr = $lastDS ? ((int)substr($lastDS, -4)) + 1 : 0;
+    // Tentukan nomor increment selanjutnya
+    $nextIncr = $lastDSNumber ? ((int)substr($lastDSNumber, -5)) + 1 : 1;
 
     foreach ($dataDI as $row) {
-        $dsNumber = "DS-{$datePrefix}-" . str_pad($nextIncr, 4, '0', STR_PAD_LEFT);
+        $supplierPN = $row->supplier_part_number;
+
+        // Skip jika DS untuk supplier_part_number ini sudah ada
+        if ($existingDS->has($supplierPN)) {
+            continue;
+        }
+
+        $dsNumber = "DS-{$datePrefix}-" . str_pad($nextIncr, 5, '0', STR_PAD_LEFT);
         $nextIncr++;
 
-        if (!DsInput::where('ds_number', $dsNumber)
-            ->where('supplier_part_number', $row->supplier_part_number)
-            ->exists()) {
-            DsInput::create([
-                'ds_number' => $dsNumber,
-                'gate' => $row->gate,
-                'supplier_part_number' => $row->supplier_part_number,
-                'qty' => $row->qty,
-                'di_type' => $row->di_type,
-                'di_received_time' => $row->di_received_time,
-                'di_received_date_string' => $row->di_received_date_string,
-                'flag' => 0,
-            ]);
-        }
+        DsInput::create([
+            'ds_number' => $dsNumber,
+            'gate' => $row->gate,
+            'supplier_part_number' => $row->supplier_part_number,
+            'qty' => $row->qty,
+            'di_type' => $row->di_type,
+            'di_received_time' => $row->di_received_time,
+            'di_received_date_string' => $row->di_received_date_string,
+            'flag' => 0,
+            'flag_prep' => 0, // otomatis diset 0, tidak ditampilkan di blade
+        ]);
     }
 
-    // Redirect ke index dengan tanggal yang sama supaya info dan tabel DS sinkron
-    return redirect()->route('ds_input.index', ['tanggal' => $selectedDate])
-                     ->with('success', "DS untuk tanggal {$selectedDate} berhasil digenerate.");
+    // Langsung redirect tanpa notifikasi
+    return redirect()->route('ds_input.index', ['tanggal' => $selectedDate]);
 }
-
     public function import(Request $request)
     {
         $request->validate([
@@ -158,6 +163,40 @@ public function generate(Request $request)
             ->with('success', "Data DS {$ds_number} berhasil dihapus.");
     }
 
+
+public function createDn($ds)
+{
+    // Ambil data DS
+    $dsInput = DsInput::where('ds_number', $ds)->firstOrFail();
+
+    // Tampilkan view form DN, kirim data DS
+   return view('DS_Input.dn_form', ['ds' => $dsInput]);
+}
+
+public function storeDn(Request $request, $ds)
+{
+    $request->validate([
+        'dn_number' => 'required|string|unique:dn_inputs,dn_number',
+        'qty_dn' => 'required|integer|min:1',
+    ]);
+
+    // Ambil DS
+    $dsInput = DsInput::where('ds_number', $ds)->firstOrFail();
+
+    // Simpan ke tabel DN (buat model DnInput atau sesuai nama tabelmu)
+    Dn_Input::create([
+        'ds_number' => $dsInput->ds_number,
+        'dn_number' => $request->dn_number,
+        'qty_dn' => $request->qty_dn,
+        'supplier_part_number' => $dsInput->supplier_part_number,
+        'gate' => $dsInput->gate,
+        'di_type' => $dsInput->di_type,
+        'di_received_date_string' => $dsInput->di_received_date_string,
+        'di_received_time' => $dsInput->di_received_time,
+    ]);
+
+    return redirect()->route('ds_input.index')->with('success', "DN {$request->dn_number} berhasil dibuat dari DS {$dsInput->ds_number}.");
+}
     // Method untuk debugging
     public function debugData()
     {
@@ -190,4 +229,6 @@ public function generate(Request $request)
             'ds_sample' => $dsData->take(3)
         ]);
     }
+
+
 }

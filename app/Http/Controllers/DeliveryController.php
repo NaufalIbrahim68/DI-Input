@@ -70,36 +70,116 @@ class DeliveryController extends Controller
         return view('DI_Input.index', ['data' => $data]);
     }
 
-    public function import(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|mimes:xlsx,xls,csv|max:51200'
-        ]);
+   public function import(Request $request)
+{
+    $request->validate([
+        'file' => 'required|mimes:xlsx,xls,csv|max:51200'
+    ]);
 
-        ini_set('max_execution_time', self::MAX_EXECUTION_TIME);
-        ini_set('memory_limit', self::MEMORY_LIMIT);
+    ini_set('max_execution_time', 600);
+    ini_set('memory_limit', '1024M');
 
-        try {
-            // HANYA gunakan Excel::toArray, JANGAN gunakan Import class untuk menghindari double processing
-            $data = Excel::toArray(new SimpleArrayImport(), $request->file('file'));
-            if (empty($data) || empty($data[0])) {
-                return back()->with('error', '❌ File kosong atau tidak dapat dibaca.');
+    try {
+        $file = $request->file('file');
+        Log::info("📁 Processing file: " . $file->getClientOriginalName());
+
+        // Ambil semua sheet sebagai array
+        $sheets = Excel::toArray(null, $file);
+        if (empty($sheets) || empty($sheets[0])) {
+            return back()->with('error', '❌ File kosong atau tidak bisa dibaca.');
+        }
+
+        $rows = $sheets[0]; // ambil sheet pertama
+        $headerRows = 1;     // sesuaikan jika header lebih dari 1 baris
+
+        $created = 0;
+        $duplicates = 0;
+        $failed = 0;
+        $failedRows = [];
+
+        // Ambil referensi part number
+        $references = DiPartnumber::select('supplier_pn','baan_pn','visteon_pn')
+            ->whereNotNull('supplier_pn')
+            ->where('supplier_pn','!=','')
+            ->get()
+            ->keyBy(fn($item) => strtolower(str_replace([' ','-','_'],'',trim($item->supplier_pn))));
+
+        $processedDiNumbers = [];
+
+        foreach ($rows as $index => $row) {
+            // skip header
+            if ($index < $headerRows || empty(array_filter($row))) continue;
+
+            $diNo = trim($row[0] ?? '');
+            $gate = trim($row[1] ?? '');
+            $supplierPN = trim($row[6] ?? '');
+
+            // Validasi required
+            if (empty($diNo) || strtolower($diNo) === 'di no' || empty($gate) || empty($supplierPN)) {
+                $failed++;
+                $failedRows[] = $index + 1;
+                Log::warning("❌ Row ".($index+1)." gagal validasi: ".json_encode($row));
+                continue;
             }
 
-            Log::info("📁 Processing Excel file - Total sheets: " . count($data));
-            Log::info("📊 First sheet rows: " . count($data[0]));
+            // Cek duplicate di file
+            if (in_array($diNo, $processedDiNumbers)) {
+                $duplicates++;
+                Log::info("⚠️ Row ".($index+1)." duplicate di file: $diNo");
+                continue;
+            }
 
-            $references = $this->loadReferences();
-            $result = $this->processExcelData($data[0], $references);
+            // Cek duplicate di DB
+            if (DiInputModel::where('di_no',$diNo)->exists()) {
+                $duplicates++;
+                Log::info("⚠️ Row ".($index+1)." sudah ada di DB: $diNo");
+                continue;
+            }
 
-            return $this->buildResponse($result);
+            // Ambil reference part number
+            $normalizedPN = strtolower(str_replace([' ','-','_'],'',$supplierPN));
+            $reference = $references->get($normalizedPN);
 
-        } catch (\Exception $e) {
-            Log::error("❌ Import failed: " . $e->getMessage());
-            Log::error("Stack trace: " . $e->getTraceAsString());
-            return back()->with('error', '❌ Gagal mengimpor file: ' . $e->getMessage());
+            // Persiapkan data
+            $dataToInsert = [
+                'di_no' => $diNo,
+                'gate' => $gate,
+                'po_number' => $row[2] ?? null,
+                'supplier_part_number' => $supplierPN,
+                'supplier_part_number_desc' => $row[7] ?? null,
+                'qty' => is_numeric($row[8] ?? null) ? (int)$row[8] : 0,
+                'di_type' => $row[14] ?? null,
+                'di_received_date_string' => !empty($row[16]) ? \Carbon\Carbon::parse($row[16])->format('Y-m-d') : null,
+                'di_received_time' => !empty($row[17]) ? \Carbon\Carbon::parse($row[17])->format('H:i:s') : null,
+                'baan_pn' => $reference->baan_pn ?? null,
+                'visteon_pn' => $reference->visteon_pn ?? null,
+            ];
+
+            try {
+                DiInputModel::create($dataToInsert);
+                $created++;
+                $processedDiNumbers[] = $diNo;
+                Log::info("✅ Row ".($index+1)." berhasil diimpor: $diNo");
+            } catch (\Exception $e) {
+                $failed++;
+                $failedRows[] = $index + 1;
+                Log::error("❌ Row ".($index+1)." gagal insert: ".$e->getMessage());
+            }
         }
+
+        // Build response message
+        $messages = [];
+        if ($created > 0) $messages[] = "✅ $created data berhasil diimpor";
+        if ($duplicates > 0) $messages[] = "⚠️ $duplicates data duplicate";
+        if ($failed > 0) $messages[] = "❌ $failed gagal (baris: ".implode(', ', array_slice($failedRows,0,10)).")";
+
+        return back()->with('success', implode(' | ', $messages));
+
+    } catch (\Exception $e) {
+        Log::error("❌ Import gagal: ".$e->getMessage());
+        return back()->with('error', '❌ Gagal mengimpor file: '.$e->getMessage());
     }
+}
 
     private function loadReferences()
     {

@@ -27,21 +27,6 @@ class DsInputImport implements ToCollection, WithHeadingRow
                            $row['di no'] ?? 
                            $this->generateDsNumber();
 
-                // Debug: cek nama kolom yang tersedia
-                // Uncomment line di bawah untuk debug
-                // \Log::info('Available columns: ' . implode(', ', array_keys($row->toArray())));
-                
-                // Coba berbagai kemungkinan nama kolom untuk status
-             
-              
-                // Gunakan status dari mapping, jika tidak ada atau kosong gunakan default
-                
-                // Debug: log status yang diproses
-                // Uncomment line di bawah untuk debug
-                // \Log::info("Row " . ($index + 1) . " - Original status: '$statusValue', Final status: '$finalStatus'");
-                
-                // Validasi status - hanya terima 3 status yang valid
-               
 
                 // Parse tanggal dengan lebih baik
                 $receivedDate = $this->parseDate($row['di_received_date'] ?? 
@@ -108,33 +93,31 @@ class DsInputImport implements ToCollection, WithHeadingRow
     }
 
     private function parseTime($time)
-    {
-        if (empty($time)) return null;
+{
+    if (empty($time)) return null;
 
-        try {
-            // Handle Excel time format (numeric - decimal representing time)
-            if (is_numeric($time)) {
-                // Excel time is stored as fraction of day
-                if ($time < 1) {
-                    $seconds = $time * 86400; // Convert to seconds
-                    $hours = floor($seconds / 3600);
-                    $minutes = floor(($seconds % 3600) / 60);
-                    $secs = $seconds % 60;
-                    return sprintf('%02d:%02d:%02d', $hours, $minutes, $secs);
-                } else {
-                    // Full datetime
-                    return Date::excelToDateTimeObject($time)->format('H:i:s');
-                }
+    try {
+        // Handle Excel time format (numeric - fraction of day)
+        if (is_numeric($time)) {
+            if ($time < 1) {
+                $seconds = $time * 86400;
+                $hours = floor($seconds / 3600);
+                $minutes = floor(($seconds % 3600) / 60);
+                $secs = $seconds % 60;
+                return sprintf('%02d:%02d:%02d', $hours, $minutes, $secs);
+            } else {
+                return Date::excelToDateTimeObject($time)->format('H:i:s');
             }
-            
-            // Handle string time
-            return Carbon::parse($time)->format('H:i:s');
-            
-        } catch (\Exception $e) {
-         Log::error("Date parsing error for value '$date': " . $e->getMessage());
-            return null;
         }
+
+        // Handle string time
+        return Carbon::parse($time)->format('H:i:s');
+
+    } catch (\Exception $e) {
+        Log::error("Time parsing error for value '$time': " . $e->getMessage());
+        return null;
     }
+}
 
     private function generateDsNumber()
     {
