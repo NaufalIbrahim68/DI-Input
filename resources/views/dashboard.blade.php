@@ -115,9 +115,9 @@
           <tbody>
             @foreach ($timeline as $item)
               <tr class="hover:bg-gray-50">
-                <td class="text-black border p-2">
-                  {{ $item->di_received_date_string ?? '-' }}
-                </td>
+               <td class="text-black border p-2">
+    {{ $item->di_received_date_string ? \Carbon\Carbon::parse($item->di_received_date_string)->format('d-m-Y') : '-' }}
+</td>
                 <td class="text-black border p-2">{{ $item->di_no }}</td>
                 <td class="text-black border p-2">{{ $item->qty }}</td>
                 <td class="text-black border p-2">{{ $item->supplier_part_number }}</td>

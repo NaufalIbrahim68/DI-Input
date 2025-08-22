@@ -26,8 +26,6 @@
                 <th>Qty DN</th>
                 <th>Qty DS</th>
                 <th>Received Date</th>
-                <th>Dibuat</th>
-                <th>Update</th>
             </tr>
         </thead>
         <tbody>
@@ -39,8 +37,6 @@
                     <td>{{ $dn->qty_dn }}</td>
                     <td>{{ $dn->qty_ds }}</td>
                     <td>{{ $dn->di_received_date_string }}</td>
-                    <td>{{ $dn->created_at }}</td>
-                    <td>{{ $dn->updated_at }}</td>
                 </tr>
             @empty
                 <tr>

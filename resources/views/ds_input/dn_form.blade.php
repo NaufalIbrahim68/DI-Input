@@ -17,7 +17,7 @@
 
 {{-- Quantity DN (input user) --}}
 <div class="mb-3">
-    <label for="qty_dn" class="form-label text-black">Quantity DN</label>
+    <label for="qty_dn" class="form-label text-black">Quality DN</label>
     <input type="number" name="qty_dn" id="qty_dn" 
            class="form-control" value="{{ old('qty_dn') }}" min="1">
 </div>
