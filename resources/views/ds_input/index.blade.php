@@ -30,7 +30,7 @@
         @csrf
         <div class="d-flex align-items-center gap-2">
             <input type="date" name="selected_date" value="{{ request('tanggal') }}" class="form-control" style="width:200px;" required>
-            <button type="submit" class="btn btn-success">Generate DI</button>
+            <button type="submit" class="btn btn-success">Filter Tanggal</button>
         </div>
     </form>
 </div>
@@ -74,7 +74,7 @@
             <td class="text-black">{{ \Carbon\Carbon::parse($ds->di_received_date_string)->format('d-m-Y') }}</td>
             <td class="text-black">{{ $ds->di_received_time ?? '-' }}</td>
             <td class="text-black">
-                @if($ds->flag == 1)
+                @if($ds->flag_prep == 1)
                     <span class="badge bg-success text-white">Completed</span>
                 @else
                     <span class="badge bg-primary text-white">Non Completed</span>
@@ -114,67 +114,6 @@
                     <input type="hidden" name="page" value="{{ request('page') }}">
                     <button type="submit" class="btn btn-sm">🗑️</button>
                 </form>
-
-                {{-- DN --}}
-                <a href="{{ route('ds_input.create_dn', $ds->ds_number) }}" class="btn btn-sm">📦</a>
-            </td>
-
-            {{-- Form Edit Inline --}}
-            <tr id="edit-row-{{ $ds->ds_number }}" class="edit-form-row" style="display: none;">
-                <td colspan="11">
-                    <form method="POST" action="{{ route('ds_input.update', $ds->ds_number) }}">
-                        @csrf
-                        @method('PUT')
-
-                        {{-- Simpan pagination & filter --}}
-                        <input type="hidden" name="page" value="{{ request('page', 1) }}">
-                        @foreach(request()->except(['_token', '_method']) as $key => $value)
-                            @if(!is_array($value))
-                                <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                            @endif
-                        @endforeach
-
-                        <div class="table-responsive">
-                            <table class="table table-bordered mb-0">
-                                <tr>
-                                    <td>
-                                        <input type="text" name="gate" class="form-control form-control-sm text-black"
-                                               value="{{ old('gate', $ds->gate) }}" required>
-                                    </td>
-                                    <td>
-                                        <input type="text" name="di_type" class="form-control form-control-sm text-black"
-                                               value="{{ old('di_type', $ds->di_type) }}">
-                                    </td>
-                                    <td>
-                                        <input type="text" name="supplier_part_number" class="form-control form-control-sm text-black"
-                                               value="{{ old('supplier_part_number', $ds->supplier_part_number) }}" required>
-                                    </td>
-                                    <td>
-                                        <input type="date" name="di_received_date_string" class="form-control form-control-sm text-black"
-                                               value="{{ old('di_received_date_string', $ds->di_received_date_string) }}">
-                                    </td>
-                                    <td>
-                                        <input type="time" name="di_received_time" class="form-control form-control-sm text-black"
-                                               value="{{ old('di_received_time', $ds->di_received_time) }}">
-                                    </td>
-                                    <td>
-                                        <select name="flag" class="form-control form-control-sm text-black">
-                                            <option value="0" {{ old('flag', $ds->flag) == 0 ? 'selected' : '' }}>Non Completed</option>
-                                            <option value="1" {{ old('flag', $ds->flag) == 1 ? 'selected' : '' }}>Completed</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <input type="number" name="qty" class="form-control form-control-sm text-black"
-                                               value="{{ old('qty', $ds->qty) }}" required>
-                                    </td>
-                                    <td colspan="2">
-                                        <div class="d-flex gap-1">
-                                            <button type="submit" class="btn btn-success btn-sm w-100">💾 Simpan</button>
-                                            <button type="button" class="btn btn-secondary btn-sm w-100"
-                                                    onclick="document.getElementById('edit-row-{{ $ds->ds_number }}').style.display='none'">
-                                                ❌ Batal
-                                            </button>
-                                        </div>
                                     </td>
                                 </tr>
                             </table>

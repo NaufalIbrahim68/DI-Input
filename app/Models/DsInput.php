@@ -23,7 +23,7 @@ class DsInput extends Model
         'di_type',
         'di_received_time',
         'di_received_date_string',
-        'flag',
+        'flag_prep',
         'created_at',
         'updated_at'
     ];

@@ -99,9 +99,9 @@
       @if($timeline->isEmpty())
         <div class="text-dark py-4">Tidak ada data untuk tanggal tersebut.</div>
       @endif
-      
-      <div id="timeline-table">
-        <table class="w-full table-auto border-collapse">
+    <div id="timeline-table" class="w-full">
+  <div class="overflow-x-auto">
+    <table class="min-w-full table-auto border-collapse">
           <thead>
             <tr class="bg-dark-100 text-left">
               <th class="border p-2 bg-black text-white">Tanggal</th>
