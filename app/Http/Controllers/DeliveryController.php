@@ -180,6 +180,20 @@ class DeliveryController extends Controller
         }
     }
 
+public function show($id)
+{
+    try {
+        $diData = DiInputModel::findOrFail($id);
+        return response()->json($diData);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Data tidak ditemukan',
+            'id' => $id
+        ], 404);
+    }
+}
+
+
     private function loadReferences()
     {
         return DiPartnumber::select('supplier_pn', 'baan_pn', 'visteon_pn')
@@ -459,4 +473,6 @@ class SimpleArrayImport implements ToArray
     {
         return $array;
     }
+
+   
 }

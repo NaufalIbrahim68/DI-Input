@@ -28,18 +28,7 @@
             </div>
         </form>
 
-        {{-- Tombol Export (bawa query ?tanggal=) --}}
-        <div class="d-flex gap-2 mb-3">
-            <a href="{{ route('ds_input.export.pdf', ['tanggal' => $generateDate]) }}"
-               class="btn btn-danger btn-sm">
-               📄 Export PDF
-            </a>
-            <a href="{{ route('ds_input.export.excel', ['tanggal' => $generateDate]) }}"
-               class="btn btn-success btn-sm">
-               📊 Export Excel
-            </a>
-        </div>
-
+        
         {{-- Tabel DS --}}
         <div class="table-responsive" style="overflow-x: auto;">
             <table class="table table-bordered table-sm bg-white small">
@@ -55,7 +44,6 @@
                         <th>Status Preparation</th>
                         <th>Status Delivery</th>
                         <th>Qty</th>
-                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -100,24 +88,7 @@
                         </td>
                         <td class="text-black">{{ $ds->qty ?? '-' }}</td>
 
-                            <td class="d-flex gap-2">
-                        {{-- Edit: arahkan ke halaman edit --}}
-                        <a href="{{ route('ds_input.edit', $ds->ds_number) }}"
-                           class="btn btn-sm bg-white" title="Edit">✏️</a>
-
-                        {{-- Delete --}}
-                        <form action="{{ route('ds_input.destroy', $ds->ds_number) }}" method="POST" style="display:inline-block"
-                              onsubmit="return confirm('Yakin ingin menghapus data ini?');">
-                            @csrf
-                            @method('DELETE')
-                            {{-- jaga filter & halaman saat kembali --}}
-                            <input type="hidden" name="tanggal" value="{{ request('tanggal') }}">
-                            <input type="hidden" name="status" value="{{ request('status') }}">
-                            <input type="hidden" name="page" value="{{ request('page') }}">
-                            <button type="submit" class="btn btn-sm">🗑️</button>
-                        </form>
-                    </td>
-                </tr>
+                           
                      
                     </tr>
                 @empty

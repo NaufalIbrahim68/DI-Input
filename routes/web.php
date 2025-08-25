@@ -38,6 +38,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('DI_Input')->name('DI_Input.')->group(function () {
         Route::get('/', [DiInputController::class, 'index'])->name('index');
         Route::get('/create', [DiInputController::class, 'create'])->name('form');
+       Route::get('/deliveries/{id}', [DeliveryController::class, 'show'])->name('deliveries.show');
         Route::post('/store', [DiInputController::class, 'store'])->name('store');
         Route::delete('/{id}', [DiInputController::class, 'destroy'])->name('destroy');
         Route::get('/{id}/edit', [DiInputController::class, 'edit'])->name('edit');
@@ -52,7 +53,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [DeliveryController::class, 'index'])->name('index');
         Route::get('/import-form', fn() => view('DI_Input.import'))->name('import.form');
         Route::post('/import', [DeliveryController::class, 'import'])->name('import.submit');
-        Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');
+   Route::get('/deliveries/{id}', [DeliveryController::class, 'show'])->name('deliveries.show');
+
     });
 
 // 📑 DS INPUT (Data DS + Generate DS)

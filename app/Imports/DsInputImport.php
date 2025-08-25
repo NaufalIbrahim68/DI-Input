@@ -55,7 +55,10 @@ class DsInputImport implements ToCollection, WithHeadingRow
                         'di_received_date_string' => $receivedDate,
                         'di_received_time' => $this->parseTime($row['di_received_time'] ?? 
                                                               $row['DI Received Time'] ?? null),
-                        'flag_prep' => 0
+                        'flag_prep' => 0,
+                         'flag_record' => 0,
+                    
+
                     ]);
                     $this->successCount++;
                 } else {

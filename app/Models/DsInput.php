@@ -24,6 +24,7 @@ class DsInput extends Model
         'di_received_time',
         'di_received_date_string',
         'flag_prep',
+        'flag_record',
         'created_at',
         'updated_at'
     ];
