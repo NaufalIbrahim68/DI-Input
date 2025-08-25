@@ -107,17 +107,34 @@ public function index(Request $request)
     }
 
     // ✅ Export PDF
-    public function exportPdf()
+    public function exportPdf(Request $request)
 {
-    $dsInputs = DsInput::all();
+    // Ambil tanggal dari request
+    $tanggal = $request->input('tanggal');
 
-    $pdf = Pdf::loadView('Ds_Input.pdf', compact('dsInputs'))
+    $query = DsInput::query();
+
+    if ($tanggal) {
+        $query->whereDate('di_received_date_string', $tanggal);
+    }
+
+    $dsInputs = $query->orderBy('ds_number')->get();
+
+    // Load view PDF, kirim data dsInputs & tanggal
+    $pdf = Pdf::loadView('Ds_Input.pdf', compact('dsInputs', 'tanggal'))
         ->setPaper('a4', 'landscape');
 
-    return $pdf->download('ds_input.pdf');
+    $fileName = 'ds_input';
+    if ($tanggal) {
+        $fileName .= '_' . \Carbon\Carbon::parse($tanggal)->format('d-m-Y');
+    }
+    $fileName .= '.pdf';
+
+    return $pdf->download($fileName);
 }
 
-  public function export(Request $request)
+
+public function exportExcel(Request $request)
 {
     $tanggal = $request->input('tanggal'); 
     return Excel::download(new DsInputExport($tanggal), 'ds_input.xlsx');

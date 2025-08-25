@@ -53,7 +53,7 @@
 @endif
 
 
-<div class="table-responsive" style="overflow-x: auto;">
+<div class="table-responsive" style="overflow-x:auto; width:100%;">
     <table id="example" class="table table-bordered table-sm bg-white small">
         <thead class="bg-black text-white">
             <tr>
@@ -67,7 +67,6 @@
                 <th>Status Preparation</th>
                 <th>Status Delivery</th>
                 <th>Qty</th>
-                <th>Action</th>
             </tr>
         </thead>
         <tbody>
@@ -107,24 +106,7 @@
                         @endswitch
                     </td>
                     <td class="text-black">{{ $ds->qty ?? '-' }}</td>
-                    <td class="d-flex gap-2">
-                        {{-- Edit: arahkan ke halaman edit --}}
-                        <a href="{{ route('ds_input.edit', $ds->ds_number) }}"
-                           class="btn btn-sm bg-white" title="Edit">✏️</a>
-
-                        {{-- Delete --}}
-                        <form action="{{ route('ds_input.destroy', $ds->ds_number) }}" method="POST" style="display:inline-block"
-                              onsubmit="return confirm('Yakin ingin menghapus data ini?');">
-                            @csrf
-                            @method('DELETE')
-                            {{-- jaga filter & halaman saat kembali --}}
-                            <input type="hidden" name="tanggal" value="{{ request('tanggal') }}">
-                            <input type="hidden" name="status" value="{{ request('status') }}">
-                            <input type="hidden" name="page" value="{{ request('page') }}">
-                            <button type="submit" class="btn btn-sm">🗑️</button>
-                        </form>
-                    </td>
-                </tr>
+                
             @endforeach
         @else
             <tr>
@@ -146,7 +128,20 @@ $(document).ready(function () {
         "responsive": true, 
         "scrollX": true,    
         "searching": false, 
-        "lengthChange": true
+        "lengthChange": true,
+            "columnDefs": [
+        { "width": "20px", "targets": 0 }, 
+        { "width": "150px", "targets": 1 }, 
+        { "width": "100px", "targets": 2 }, 
+        { "width": "120px", "targets": 3 }, 
+        { "width": "180px", "targets": 4 }, 
+        { "width": "120px", "targets": 5 }, 
+        { "width": "100px", "targets": 6 }, 
+        { "width": "120px", "targets": 7 }, 
+        { "width": "120px", "targets": 8 }, 
+        { "width": "80px",  "targets": 9 }, 
+    ]
+
     });
 });
 </script>

@@ -55,7 +55,7 @@
                         <th>Status Preparation</th>
                         <th>Status Delivery</th>
                         <th>Qty</th>
-                        {{-- <th>Action</th> --}}
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -99,9 +99,26 @@
                             @endswitch
                         </td>
                         <td class="text-black">{{ $ds->qty ?? '-' }}</td>
-                        {{-- <td>
-                            <a href="#" class="btn btn-sm btn-info">Detail</a>
-                        </td> --}}
+
+                            <td class="d-flex gap-2">
+                        {{-- Edit: arahkan ke halaman edit --}}
+                        <a href="{{ route('ds_input.edit', $ds->ds_number) }}"
+                           class="btn btn-sm bg-white" title="Edit">✏️</a>
+
+                        {{-- Delete --}}
+                        <form action="{{ route('ds_input.destroy', $ds->ds_number) }}" method="POST" style="display:inline-block"
+                              onsubmit="return confirm('Yakin ingin menghapus data ini?');">
+                            @csrf
+                            @method('DELETE')
+                            {{-- jaga filter & halaman saat kembali --}}
+                            <input type="hidden" name="tanggal" value="{{ request('tanggal') }}">
+                            <input type="hidden" name="status" value="{{ request('status') }}">
+                            <input type="hidden" name="page" value="{{ request('page') }}">
+                            <button type="submit" class="btn btn-sm">🗑️</button>
+                        </form>
+                    </td>
+                </tr>
+                     
                     </tr>
                 @empty
                     <tr>

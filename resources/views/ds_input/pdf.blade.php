@@ -1,26 +1,57 @@
-<table border="1" cellspacing="0" cellpadding="5" width="100%">
-    <thead>
-        <tr>
-            <th>DS Number</th>
-            <th>Gate</th>
-            <th>Supplier Part Number</th>
-            <th>Qty</th>
-            <th>DI Type</th>
-            <th>Received Date</th>
-            <th>Received Time</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach($dsInputs as $ds)
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DS Input</title>
+    <style>
+        body { font-family: sans-serif; font-size: 12px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #000; padding: 5px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+
+    <h3 style="text-align: center;">
+        Data DS
+        @if(!empty($tanggal))
+            {{ \Carbon\Carbon::parse($tanggal)->format('d-m-Y') }}
+        @endif
+    </h3>
+
+    <table>
+        <thead>
             <tr>
-                <td>{{ $ds->ds_number }}</td>
-                <td>{{ $ds->gate }}</td>
-                <td>{{ $ds->supplier_part_number }}</td>
-                <td>{{ $ds->qty }}</td>
-                <td>{{ $ds->di_type }}</td>
-                <td>{{ $ds->di_received_date_string }}</td>
-                <td>{{ $ds->di_received_time }}</td>
+                <th>DS Number</th>
+                <th>Gate</th>
+                <th>Supplier Part Number</th>
+                 <th>DI Type</th>
+                <th>Received Date</th>
+                <th>Received Time</th>
+                <th>Qty</th>
+       
+                
             </tr>
-        @endforeach
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @forelse($dsInputs as $ds)
+                <tr>
+                    <td>{{ $ds->ds_number }}</td>
+                    <td>{{ $ds->gate }}</td>
+                    <td>{{ $ds->supplier_part_number }}</td>
+                     <td>{{ $ds->di_type }}</td>
+                        <td>{{ $ds->di_received_date_string 
+                        ? \Carbon\Carbon::parse($ds->di_received_date_string)->format('d-m-Y') 
+                        : '-' }}</td>
+                    <td>{{ $ds->di_received_time ?? '-' }}</td>  
+                    <td>{{ $ds->qty }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="7" style="text-align: center;">Tidak ada data</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
+</body>
+</html>
