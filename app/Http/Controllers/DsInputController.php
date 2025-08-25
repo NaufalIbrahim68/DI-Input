@@ -10,90 +10,40 @@ use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB; 
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\DsInputExport; 
 
 class DsInputController extends Controller
 {
     // ✅ Halaman Data DS
-    public function index(Request $request)
-    {
-        $query = DsInput::query();
+   
+public function index(Request $request)
+{
+    $query = DsInput::query();
 
-        // Filter tanggal
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween(DB::raw("DATE(di_received_date_string)"), [$request->start_date, $request->end_date]);
-        }
-
-        // Filter status
-        if ($request->filled('status')) {
-            $query->where('di_status', $request->status);
-        }
-
-        $ds = $query->orderBy('created_at', 'desc')->paginate(10);
-
-        return view('Ds_Input.index', compact('ds'));
-        // 🔑 Note: pake "Ds_Input" sesuai struktur folder kamu
+    // filter tanggal kalau ada
+    if ($request->filled('tanggal')) {
+        $query->whereDate('created_at', $request->tanggal);
     }
 
+    $dsInputs = $query->orderBy('created_at', 'desc')->get(); // ambil semua data
+
+    return view('ds_input.index', compact('dsInputs'));
+}
     // ✅ Form untuk generate DS
-    public function generateForm()
+  public function generateForm(Request $request)
     {
-        return view('Ds_Input.generate_ds');
-    }
+        // Ambil tanggal dari query ?generate_date=YYYY-MM-DD
+        $generateDate = $request->query('generate_date');
+        $dsInputs = collect();
 
-    // ✅ Generate DS dari data DI
-    public function generate(Request $request)
-    {
-        $request->validate([
-            'selected_date' => 'required|date',
-        ]);
-
-        $selectedDate = $request->input('selected_date');
-
-        // Ambil semua DI untuk tanggal itu
-        $dataDI = DiInputModel::whereDate('di_received_date_string', $selectedDate)->get();
-        if ($dataDI->isEmpty()) {
-            return redirect()->back()->with('error', "Tidak ada data DI untuk tanggal {$selectedDate}.");
+        if ($generateDate) {
+            $dsInputs = DsInput::whereDate('di_received_date_string', $generateDate)
+                ->orderBy('ds_number')
+                ->get();
         }
 
-        // Ambil semua DS yang sudah ada untuk tanggal itu
-        $existingDS = DsInput::whereDate('di_received_date_string', $selectedDate)
-            ->get()
-            ->keyBy('supplier_part_number');
-
-        $datePrefix = Carbon::parse($selectedDate)->format('dmy');
-
-        // Ambil nomor DS terakhir
-        $lastDSNumber = DsInput::where('ds_number', 'like', "DS-{$datePrefix}-%")
-            ->orderByDesc('ds_number')
-            ->value('ds_number');
-
-        $nextIncr = $lastDSNumber ? ((int)substr($lastDSNumber, -5)) + 1 : 1;
-
-        foreach ($dataDI as $row) {
-            $supplierPN = $row->supplier_part_number;
-
-            // Skip jika sudah ada DS dengan supplier_part_number ini
-            if ($existingDS->has($supplierPN)) {
-                continue;
-            }
-
-            $dsNumber = "DS-{$datePrefix}-" . str_pad($nextIncr, 5, '0', STR_PAD_LEFT);
-            $nextIncr++;
-
-            DsInput::create([
-                'ds_number' => $dsNumber,
-                'gate' => $row->gate,
-                'supplier_part_number' => $row->supplier_part_number,
-                'qty' => $row->qty,
-                'di_type' => $row->di_type,
-                'di_received_time' => $row->di_received_time,
-                'di_received_date_string' => $row->di_received_date_string,
-                'flag_prep' => 0,
-            ]);
-        }
-
-        return redirect()->route('ds_input.index', ['tanggal' => $selectedDate])
-            ->with('success', "DS untuk tanggal {$selectedDate} berhasil digenerate.");
+        // NOTE: sesuaikan nama view dengan lokasi file kamu
+        return view('Ds_Input.generate_ds', compact('generateDate', 'dsInputs'));
     }
 
     // ✅ Import DS dari Excel
@@ -114,12 +64,11 @@ class DsInputController extends Controller
     }
 
     // ✅ Edit DS
-    public function edit(Request $request, $ds_number)
-    {
-        $ds = DsInput::where('ds_number', $ds_number)->firstOrFail();
-        return view('Ds_Input.dn_form', compact('ds'));
-    }
-
+   public function edit($ds_number)
+{
+    $ds = DsInput::where('ds_number', $ds_number)->firstOrFail();
+    return view('Ds_Input.edit', compact('ds'));
+}
     // ✅ Update DS
     public function update(Request $request, $ds_number)
     {
@@ -158,20 +107,87 @@ class DsInputController extends Controller
     }
 
     // ✅ Export PDF
-    public function exportPdf(Request $request)
-    {
-        $selectedDate = $request->query('tanggal');
+    public function exportPdf()
+{
+    $dsInputs = DsInput::all();
 
-        $query = DsInput::query();
-        if ($selectedDate) {
-            $query->whereDate('di_received_date_string', $selectedDate);
+    $pdf = Pdf::loadView('Ds_Input.pdf', compact('dsInputs'))
+        ->setPaper('a4', 'landscape');
+
+    return $pdf->download('ds_input.pdf');
+}
+
+  public function export(Request $request)
+{
+    $tanggal = $request->input('tanggal'); 
+    return Excel::download(new DsInputExport($tanggal), 'ds_input.xlsx');
+}
+
+public function generate(Request $request)
+{
+    $request->validate([
+        'generate_date' => 'required|date',
+    ]);
+
+    $date = $request->generate_date;
+
+    try {
+        DB::beginTransaction();
+
+        // Ambil semua DI untuk tanggal tersebut
+        $diData = DiInputModel::whereDate('di_received_date_string', $date)->get();
+
+        if ($diData->isEmpty()) {
+            return redirect()
+                ->route('ds_input.generatePage', ['generate_date' => $date])
+                ->with('error', 'Tidak ada data DI pada tanggal tersebut.');
         }
 
-        $dsData = $query->orderBy('ds_number')->get();
+        // Prefix DS berdasarkan tanggal generate
+        $prefix = Carbon::parse($date)->format('dmy');
 
-        $pdf = Pdf::loadView('Ds_Input.pdf', compact('dsData', 'selectedDate'))
-                  ->setPaper('a4', 'landscape');
+        // Ambil DS terakhir untuk tanggal tersebut
+        $last = DsInput::where('ds_number', 'like', "DS-$prefix-%")
+            ->orderBy('ds_number', 'desc')
+            ->first();
 
-        return $pdf->download("data-ds-{$selectedDate}.pdf");
+        $counter = $last ? intval(substr($last->ds_number, -4)) + 1 : 1;
+
+        foreach ($diData as $di) {
+
+            // Cek duplikat DS untuk supplier_part_number dan tanggal
+            $exists = DsInput::where('supplier_part_number', $di->supplier_part_number)
+                ->where('di_received_date_string', $di->di_received_date_string)
+                ->exists();
+
+            if ($exists) continue; // lewati jika sudah ada
+
+            $dsNumber = "DS-$prefix-" . str_pad($counter++, 4, '0', STR_PAD_LEFT);
+
+            DsInput::create([
+                'ds_number'               => $dsNumber,
+                'gate'                    => $di->gate ?? '-',
+                'supplier_part_number'    => $di->supplier_part_number,
+                'qty'                     => $di->qty ?? 0,
+                'di_type'                 => $di->di_type ?? null,
+                'di_status'               => $di->di_status ?? null,
+                'di_received_date_string' => $di->di_received_date_string ?? $date,
+                'di_received_time'        => $di->di_received_time ?? null,
+                'flag_prep'               => $di->flag_prep ?? 0,
+            ]);
+        }
+
+        DB::commit();
+
+        return redirect()
+            ->route('ds_input.generatePage', ['generate_date' => $date])
+            ->with('success', 'Generate DS berhasil untuk tanggal ' . Carbon::parse($date)->format('d-m-Y'));
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()
+            ->route('ds_input.generatePage', ['generate_date' => $date])
+            ->with('error', 'Generate gagal: ' . $e->getMessage());
     }
+}
 }

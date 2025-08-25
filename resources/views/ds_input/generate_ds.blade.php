@@ -1,137 +1,116 @@
 @extends('layouts.app')
 
 @section('content')
-
-<link rel="stylesheet" href="https://cdn.datatables.net/2.3.2/css/dataTables.bootstrap5.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/responsive/3.0.3/css/responsive.bootstrap5.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.bootstrap5.min.css">
-
 <div class="container-fluid">
     <div class="bg-white p-4 shadow rounded">
-        {{-- Flash message --}}
+
+        {{-- Flash Message --}}
         @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div> 
+            <div class="alert alert-success">{{ session('success') }}</div>
         @elseif(session('error'))
             <div class="alert alert-danger">{{ session('error') }}</div>
         @endif
 
-        {{-- Form Pilih Tanggal --}}
-        <div class="d-flex justify-content-center mb-4">
-            <form method="GET" action="{{ route('ds_input.index') }}" 
-                  class="d-flex align-items-center gap-3 p-3 border rounded bg-light">
-                <label class="mb-0 fw-semibold text-black">Pilih Tanggal:</label>
-                <input type="date" name="selected_date" class="form-control" style="width: 200px;" 
-                       value="{{ $selectedDate ?? '' }}">
-                <button type="submit" class="btn btn-primary px-4">
-                    Generate Data DS
+        
+        {{-- Form Generate --}}
+        <form action="{{ route('ds_input.generate') }}" method="POST" class="row g-3 justify-content-center mb-4">
+            @csrf
+            <div class="col-md-4">
+                <label for="generate_date" class="form-label">Pilih Tanggal</label>
+                <input type="date" name="generate_date" id="generate_date"
+                       class="form-control"
+                       value="{{ $generateDate ?? '' }}" required>
+            </div>
+            <div class="col-12 text-center mt-3">
+                <button type="submit" class="btn btn-primary px-5 py-2">
+                    🚀 Generate DS
                 </button>
-            </form>
-        </div>
+            </div>
+        </form>
 
-        {{-- Info Messages --}}
-        @if(!$selectedDate)
-            <div class="alert alert-info text-center">
-                <i class="fas fa-info-circle me-2"></i>
-                Pilih tanggal untuk menampilkan data DS.
-            </div>
-        @elseif($dsData->isEmpty())
-            <div class="alert alert-warning text-center">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Tidak ada data DS untuk tanggal 
-                <strong>{{ \Carbon\Carbon::parse($selectedDate)->format('d F Y') }}</strong>.
-            </div>
-        @else
-            <div class="alert alert-success text-center">
-                <i class="fas fa-check-circle me-2"></i>
-                Menampilkan data DS untuk tanggal 
-                <strong>{{ \Carbon\Carbon::parse($selectedDate)->format('d F Y') }}</strong>
-                - Ditemukan <strong>{{ $dsData->count() }}</strong> data
-            </div>
-        @endif
-
-        <div class="d-flex justify-content-end mb-3">
-            <a href="{{ route('ds_input.export_excel', request()->query()) }}" class="btn btn-success btn-sm">
-                <i class="fas fa-file-excel"></i> Export Excel
+        {{-- Tombol Export (bawa query ?tanggal=) --}}
+        <div class="d-flex gap-2 mb-3">
+            <a href="{{ route('ds_input.export.pdf', ['tanggal' => $generateDate]) }}"
+               class="btn btn-danger btn-sm">
+               📄 Export PDF
             </a>
-            <a href="{{ route('ds_input.export_pdf', request()->query()) }}" class="btn btn-danger btn-sm ms-2">
-                <i class="fas fa-file-pdf"></i> Cetak PDF
+            <a href="{{ route('ds_input.export.excel', ['tanggal' => $generateDate]) }}"
+               class="btn btn-success btn-sm">
+               📊 Export Excel
             </a>
         </div>
 
-        <div class="table-responsive">
-            <table id="example" class="display w-full text-xs leading-tight">
-                <thead class="bg-white">
+        {{-- Tabel DS --}}
+        <div class="table-responsive" style="overflow-x: auto;">
+            <table class="table table-bordered table-sm bg-white small">
+                <thead class="bg-black text-white">
                     <tr>
-                        <th class="text-black">DS Number</th>
-                        <th class="text-black">Gate</th>
-                        <th class="text-black">Supplier Part Number</th>
-                        <th class="text-black text-center">Qty</th>
-                        <th class="text-black">DI Type</th>
-                        <th class="text-black">DI Status</th>
-                        <th class="text-black">Received Date</th>
-                        <th class="text-black">Received Time</th>
+                        <th>No</th>
+                        <th>DS Number</th>
+                        <th>Gate</th>
+                        <th>DI Type</th>
+                        <th>Supplier Part Number</th>
+                        <th>Received Date</th>
+                        <th>Received Time</th>
+                        <th>Status Preparation</th>
+                        <th>Status Delivery</th>
+                        <th>Qty</th>
+                        {{-- <th>Action</th> --}}
                     </tr>
                 </thead>
                 <tbody>
-                    @if(!$selectedDate)
-                        <tr>
-                            <td colspan="8" class="text-center">Silakan pilih tanggal terlebih dahulu.</td>
-                        </tr>
-                    @elseif($dsData->isEmpty())
-                        <tr>
-                            <td colspan="8" class="text-center">Tidak ada data DS untuk tanggal tersebut.</td>
-                        </tr>
-                    @else
-                        @foreach($dsData as $row)
-                            <tr>
-                                <td class="text-black">{{ $row->ds_number }}</td>
-                                <td class="text-black">{{ $row->gate ?? '-' }}</td>
-                                <td class="text-black">{{ $row->supplier_part_number ?? '-' }}</td>
-                                <td class="text-black text-center">{{ $row->qty ?? '-' }}</td>
-                                <td class="text-black">{{ $row->di_type ?? '-' }}</td>
-                                <td class="text-black">{{ $row->di_status ?? '-' }}</td>
-                                <td class="text-black">
-                                    {{ $row->di_received_date ? \Carbon\Carbon::parse($row->di_received_date)->format('d-m-Y') : '-' }}
-                                </td>
-                                <td class="text-black">{{ $row->di_received_time ?? '-' }}</td>
-                               {{-- Tombol Edit (ke halaman edit) --}}
-<a href="{{ route('ds_input.edit', $ds->ds_number) }}" class="btn btn-sm bg-white">✏️</a>
+                @php
+                    // pastikan variabel ada
+                    $dsInputs = $dsInputs ?? collect();
+                @endphp
 
-{{-- Tombol Delete --}}
-<form action="{{ route('ds_input.destroy', $ds->ds_number) }}" method="POST" style="display: inline-block;" 
-      onsubmit="return confirm('Yakin ingin menghapus data ini?');">
-    @csrf
-    @method('DELETE')
-    {{-- untuk menjaga filter & pagination saat kembali --}}
-    <input type="hidden" name="tanggal" value="{{ request('tanggal') }}">
-    <input type="hidden" name="status" value="{{ request('status') }}">
-    <input type="hidden" name="page" value="{{ request('page') }}">
-    <button type="submit" class="btn btn-sm">🗑️</button>
-</form>
-                            </tr>
-                        @endforeach
-                    @endif
+                @forelse ($dsInputs as $index => $ds)
+                    <tr>
+                        <td class="text-black">{{ $index + 1 }}</td>
+                        <td class="text-black">{{ $ds->ds_number ?? '-' }}</td>
+                        <td class="text-black">{{ $ds->gate ?? '-' }}</td>
+                        <td class="text-black">{{ $ds->di_type ?? '-' }}</td>
+                        <td class="text-black">{{ $ds->supplier_part_number ?? '-' }}</td>
+                        <td class="text-black">
+                            {{ !empty($ds->di_received_date_string)
+                                ? \Carbon\Carbon::parse($ds->di_received_date_string)->format('d-m-Y')
+                                : '-' }}
+                        </td>
+                        <td class="text-black">{{ $ds->di_received_time ?? '-' }}</td>
+                        <td class="text-black">
+                            @if($ds->flag_prep == 1)
+                                <span class="badge bg-success text-white">Completed</span>
+                            @else
+                                <span class="badge bg-primary text-white">Non Completed</span>
+                            @endif
+                        </td>
+                        <td>
+                            @php
+                                $totalDn = (int) \App\Models\Dn_Input::where('ds_number', $ds->ds_number)->sum('qty_dn');
+                                $qtyDs = (int) $ds->qty;
+                                if ($totalDn == 0) $status = 'not completed';
+                                elseif ($totalDn < $qtyDs) $status = 'partial';
+                                else $status = 'completed';
+                            @endphp
+                            @switch($status)
+                                @case('completed') <span class="badge bg-success text-white">Completed</span> @break
+                                @case('partial')   <span class="badge bg-warning text-white">Partial</span>   @break
+                                @default            <span class="badge bg-primary text-white">Non Completed</span>
+                            @endswitch
+                        </td>
+                        <td class="text-black">{{ $ds->qty ?? '-' }}</td>
+                        {{-- <td>
+                            <a href="#" class="btn btn-sm btn-info">Detail</a>
+                        </td> --}}
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="10" class="text-center text-muted">Belum ada data DS yang di generate.</td>
+                    </tr>
+                @endforelse
                 </tbody>
             </table>
         </div>
-
-        <!-- jQuery & DataTables -->
-        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-        <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
-
-        <script>
-            $(document).ready(function () {
-                $('#example').DataTable({
-                    "columnDefs": [
-                        { "defaultContent": "-", "targets": "_all" }
-                    ],
-                    "responsive": true,
-                    "scrollX": true,
-                    "searching": false, 
-                    "paging": false      
-                });
-            });
-        </script>
 
     </div>
 </div>

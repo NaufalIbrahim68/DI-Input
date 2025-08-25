@@ -55,29 +55,37 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}', [DeliveryController::class, 'show'])->name('show');
     });
 
-   // 📑 DS INPUT (Data DS + Generate DS)
-// ===============================
+// 📑 DS INPUT (Data DS + Generate DS)
 Route::prefix('ds-input')->name('ds_input.')->group(function () {
-    // Halaman Data DS (list)
+    // Halaman Data DS (list & filter)
     Route::get('/', [DsInputController::class, 'index'])->name('index');
 
+    // ===============================
     // Generate DS
-    Route::get('/generate-form', [DsInputController::class, 'generateForm'])->name('generate.form');
-    Route::post('/generate', [DsInputController::class, 'generate'])->name('generate');
+    // ===============================
+    Route::get('/generate', [DsInputController::class, 'generateForm'])->name('generatePage'); 
+    Route::post('/generate', [DsInputController::class, 'generate'])->name('generate');       
 
+    // ===============================
     // Import DS
+    // ===============================
     Route::get('/import-form', fn() => view('ds_input.import'))->name('import.form');
     Route::post('/import', [DsInputController::class, 'import'])->name('import');
 
+    // ===============================
     // CRUD DS
-    Route::get('/create', [DsInputController::class, 'create'])->name('create');           // ds_input.create
-    Route::post('/', [DsInputController::class, 'store'])->name('store');                 // ds_input.store
-    Route::get('/{ds_number}/edit', [DsInputController::class, 'edit'])->name('edit');    // ds_input.edit
-    Route::put('/{ds_number}', [DsInputController::class, 'update'])->name('update');     // ds_input.update
-    Route::delete('/{ds_number}', [DsInputController::class, 'destroy'])->name('destroy');// ds_input.destroy
+    // ===============================
+    Route::get('/create', [DsInputController::class, 'create'])->name('create');           
+    Route::post('/', [DsInputController::class, 'store'])->name('store');                 
+    Route::get('/{ds_number}/edit', [DsInputController::class, 'edit'])->name('edit');    
+    Route::put('/{ds_number}', [DsInputController::class, 'update'])->name('update');     
+    Route::delete('/{ds_number}', [DsInputController::class, 'destroy'])->name('destroy');
 
-    // Export PDF
-    Route::get('/export-pdf', [DsInputController::class, 'exportPdf'])->name('export_pdf');
+    // ===============================
+    // Export PDF & Excel
+    // ===============================
+    Route::get('/export/pdf', [DsInputController::class, 'exportPdf'])->name('export.pdf');
+    Route::get('/export/excel', [DsInputController::class, 'exportExcel'])->name('export.excel');
 });
 
     // 🔎 Cek Baan

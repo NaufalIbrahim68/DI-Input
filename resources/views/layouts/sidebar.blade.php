@@ -31,25 +31,19 @@
     </li>
 
 
-    <!-- Data DS -->
-    <li class="nav-item {{ request()->is('ds-input*') ? 'active' : '' }}">
-        <a class="nav-link d-flex align-items-center text-black" href="{{ route('ds_input.index') }}">
-            <i class="fas fa-table me-2 text-black"></i>
-            <span>Generate DS</span>
-        </a>
-    </li>
+   {{-- Generate DS --}}
+<a class="nav-link d-flex align-items-center text-black" href="{{ route('ds_input.generatePage') }}">
+    <i class="fas fa-rocket me-2 text-black"></i>
+    <span>Generate DS</span>
+</a>
 
-
-     <!-- DN -->
-<li class="nav-item {{ request()->is('dn*') ? 'active' : '' }}">
-    <a class="nav-link d-flex align-items-center text-black" href="{{ route('dn.index') }}">
-        <i class="fas fa-truck me-2 text-black"></i>
+{{-- Data DS --}}
+<li class="nav-item {{ request()->is('ds-input') ? 'active' : '' }}">
+    <a class="nav-link d-flex align-items-center text-black" href="{{ route('ds_input.index') }}">
+        <i class="fas fa-table me-2 text-black"></i>
         <span>Data DS</span>
     </a>
 </li>
-
-    
-
    
     <hr class="sidebar-divider">
 
