@@ -48,15 +48,8 @@
                             <th class="border p-2 bg-black text-white">No</th>
                             <th class="border p-2 bg-black text-white">DI No</th>
                             <th class="border p-2 bg-black text-white">Gate</th>
-                            <th class="border p-2 bg-black text-white">PO Number</th>
                             <th class="border p-2 bg-black text-white">Supplier Part Number</th>
-                            <th class="border p-2 bg-black text-white">BAAN PN</th>
-                            <th class="border p-2 bg-black text-white">Visteon PN</th>
-                            <th class="border p-2 bg-black text-white">Part Desc</th>
                             <th class="border p-2 bg-black text-white">Qty</th>
-                            <th class="border p-2 bg-black text-white">DI Type</th>
-                            <th class="border p-2 bg-black text-white">DI Received Date</th>
-                            <th class="border p-2 bg-black text-white">DI Received Time</th>
                             <th class="border p-2 bg-black text-white">Action</th>
                         </tr>
                     </thead>
@@ -66,23 +59,13 @@
                                 <td class="text-black border p-2">{{ $index + 1 }}</td>
                                 <td class="text-black border p-2">{{ $DI->di_no ?? '-' }}</td>
                                 <td class="text-black border p-2">{{ $DI->gate ?? '-' }}</td>
-                                <td class="text-black border p-2">{{ $DI->po_number?? '-' }}</td>
+                             
                                 <td class="text-black border p-2">{{ $DI->supplier_part_number ?? '-' }}</td>
-                                <td class="text-black border p-2">{{ $DI->baan_pn ?? '-' }}</td>
-                                <td class="text-black border p-2">{{ $DI->visteon_pn ?? '-' }}</td>
-                                <td class="text-black border p-2">{{ $DI->supplier_part_number_desc ?? '-' }}</td>
                                 <td class="text-black border p-2">{{ $DI->qty ?? '-' }}</td>
-                                <td class="text-black border p-2">{{ $DI->di_type ?? '-' }}</td>
                                 <td class="text-black border p-2">
-                                       {{ \Carbon\Carbon::parse($DI->di_received_date_string)->format('d-m-Y') }}
-                                </td>
-                                <td class="text-black border p-2">{{ $DI->di_received_time ?? '-' }}</td>
-                                <td class="text-black border p-2">
-                                    <button onclick="showDetail({{ $DI->id }})" 
-                                            class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs">
-                                        Show
-                                    </button>
-                                </td>
+                                   <a href="{{ route('deliveries.show', $DI->di_no) }}" class="btn btn-info">
+                Show
+            </a>
                             </tr>
                         @endforeach
                     </tbody>

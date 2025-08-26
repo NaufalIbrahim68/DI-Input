@@ -33,29 +33,33 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
 
     // ===============================
-    // 📦 DI INPUT
-    // ===============================
-    Route::prefix('DI_Input')->name('DI_Input.')->group(function () {
-        Route::get('/', [DiInputController::class, 'index'])->name('index');
-        Route::get('/create', [DiInputController::class, 'create'])->name('form');
-       Route::get('/deliveries/{id}', [DeliveryController::class, 'show'])->name('deliveries.show');
-        Route::post('/store', [DiInputController::class, 'store'])->name('store');
-        Route::delete('/{id}', [DiInputController::class, 'destroy'])->name('destroy');
-        Route::get('/{id}/edit', [DiInputController::class, 'edit'])->name('edit');
-        Route::put('/{id}', [DiInputController::class, 'update'])->name('update');
-        Route::post('/import', [DiInputController::class, 'import'])->name('import');
-    });
+// 📦 DI INPUT
+// ===============================
+Route::prefix('DI_Input')->name('DI_Input.')->group(function () {
+    Route::get('/', [DiInputController::class, 'index'])->name('index');
+    Route::get('/create', [DiInputController::class, 'create'])->name('form');
+    Route::post('/store', [DiInputController::class, 'store'])->name('store');
+    Route::get('/{id}/edit', [DiInputController::class, 'edit'])->name('edit');   
+    Route::put('/{id}', [DiInputController::class, 'update'])->name('update');
+    Route::delete('/{id}', [DiInputController::class, 'destroy'])->name('destroy'); 
+    Route::post('/import', [DiInputController::class, 'import'])->name('import');
+});
 
-    // ===============================
-    // 🚚 Deliveries (DI Import)
-    // ===============================
-    Route::prefix('deliveries')->name('deliveries.')->group(function () {
-        Route::get('/', [DeliveryController::class, 'index'])->name('index');
-        Route::get('/import-form', fn() => view('DI_Input.import'))->name('import.form');
-        Route::post('/import', [DeliveryController::class, 'import'])->name('import.submit');
-   Route::get('/deliveries/{id}', [DeliveryController::class, 'show'])->name('deliveries.show');
+// ===============================
+// 🚚 Deliveries (DI Import)
+// ===============================
+Route::prefix('deliveries')->name('deliveries.')->group(function () {
+    Route::get('/', [DeliveryController::class, 'index'])->name('index');
+    Route::get('/import-form', fn() => view('DI_Input.import'))->name('import.form');
+    Route::post('/import', [DeliveryController::class, 'import'])->name('import.submit');
 
-    });
+    // detail, edit, update, delete pakai di_no
+    Route::get('/{di_no}', [DeliveryController::class, 'show'])->name('show'); 
+    Route::get('/{di_no}/edit', [DeliveryController::class, 'edit'])->name('edit');
+    Route::put('/{di_no}', [DeliveryController::class, 'update'])->name('update');
+    Route::delete('/{di_no}', [DeliveryController::class, 'destroy'])->name('destroy');
+});
+    
 
 // 📑 DS INPUT (Data DS + Generate DS)
 Route::prefix('ds-input')->name('ds_input.')->group(function () {

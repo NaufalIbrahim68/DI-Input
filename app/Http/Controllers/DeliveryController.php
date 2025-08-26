@@ -183,15 +183,51 @@ class DeliveryController extends Controller
 public function show($id)
 {
     try {
-        $diData = DiInputModel::findOrFail($id);
-        return response()->json($diData);
+        $delivery = DiInputModel::findOrFail($id); // pakai primaryKey = di_no
+        return view('DI_Input.show', compact('delivery'));
     } catch (\Exception $e) {
-        return response()->json([
-            'error' => 'Data tidak ditemukan',
-            'id' => $id
-        ], 404);
+        return redirect()->route('deliveries.index')
+            ->with('error', 'Data tidak ditemukan untuk ID: '.$id);
     }
 }
+
+    public function edit($di_no)
+    {
+        $delivery = DiInputModel::findOrFail($di_no);
+        return view('deliveries.edit', compact('delivery'));
+    }
+
+    // 🔄 Update data
+    public function update(Request $request, $di_no)
+    {
+        $delivery = DiInputModel::findOrFail($di_no);
+
+        $request->validate([
+            'di_no' => 'required|string|max:50',
+            'gate' => 'nullable|string|max:50',
+            'po_number' => 'nullable|string|max:50',
+            'supplier_part_number' => 'nullable|string|max:100',
+            'qty' => 'nullable|integer',
+            'di_type' => 'nullable|string|max:50',
+        ]);
+
+        // update semua field kecuali di_no (supaya PK tidak berubah)
+        $delivery->update($request->except('di_no'));
+
+        return redirect()->route('deliveries.show', $delivery->di_no)
+            ->with('success', 'Data berhasil diperbarui');
+    }
+
+    // 🗑️ Hapus data
+    public function destroy($di_no)
+    {
+        $delivery = DiInputModel::findOrFail($di_no);
+        $delivery->delete();
+
+        return redirect()->route('deliveries.index')
+            ->with('success', 'Data berhasil dihapus');
+    }
+
 
 
     private function loadReferences()

@@ -2,10 +2,10 @@
 
 @section('content')
   <div class="max-w-7xl mx-auto px-4">
-    <h1 class="h2 mb-4 fw-semibold text-dark">Dashboard</h1>
+    <h1 class="h2 mb-2 fw-semibold text-dark">Dashboard</h1>
 
-    <!-- Container untuk kedua chart -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 mt-6">
+    <!-- Container untuk kedua chart - posisi dinaikkan -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 mt-2">
       
       <!-- Chart Kiri - Chart Timeline yang sudah ada -->
       <div class="bg-white p-6 rounded-xl shadow">
@@ -34,7 +34,7 @@
         </div>
         
         <!-- Chart Timeline -->
-        <div class="h-[400px] w-full flex justify-center items-center">
+        <div class="h-[320px] w-full flex justify-center items-center">
           <canvas id="myChart" class="w-full h-full drop-shadow-md rounded-xl"></canvas>
         </div>
       </div>
@@ -44,7 +44,7 @@
         <h3 class="text-lg font-semibold text-dark mb-4">Status Preparation (7 Hari Terakhir)</h3>
         
         <!-- Chart Status Preparation -->
-        <div class="h-[400px] w-full flex justify-center items-center">
+        <div class="h-[320px] w-full flex justify-center items-center">
           <canvas id="statusChart" class="w-full h-full drop-shadow-md rounded-xl"></canvas>
         </div>
         
@@ -63,7 +63,7 @@
     </div>
 
     <!-- Filter -->
-    <div class="bg-white p-6 rounded-xl shadow mb-6 mt-6">
+    <div class="bg-white p-6 rounded-xl shadow mb-6 mt-4">
       <form method="GET" action="{{ route('dashboard') }}" class="mb-4">
         <label for="tanggal" class="text-black mr-2">Filter Tanggal:</label>
         <input type="date" id="tanggal" name="tanggal" value="{{ request('tanggal') }}"
