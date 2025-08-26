@@ -48,24 +48,35 @@
                             <th class="border p-2 bg-black text-white">No</th>
                             <th class="border p-2 bg-black text-white">DI No</th>
                             <th class="border p-2 bg-black text-white">Gate</th>
+                            <th class="border p-2 bg-black text-white">PO Number</th>
                             <th class="border p-2 bg-black text-white">Supplier Part Number</th>
+                            <th class="border p-2 bg-black text-white">BAAN PN</th>
+                            <th class="border p-2 bg-black text-white">Visteon PN</th>
+                            <th class="border p-2 bg-black text-white">Part Desc</th>
                             <th class="border p-2 bg-black text-white">Qty</th>
-                            <th class="border p-2 bg-black text-white">Action</th>
+                            <th class="border p-2 bg-black text-white">DI Type</th>
+                            <th class="border p-2 bg-black text-white">DI Received Date</th>
+                            <th class="border p-2 bg-black text-white">DI Received Time</th>
+
+
                         </tr>
                     </thead>
-                     <tbody class="text-xs leading-tight">
+                    <tbody class="text-xs leading-tight">
                         @foreach($data as $index => $DI)
                             <tr>
                                 <td class="text-black border p-2">{{ $index + 1 }}</td>
                                 <td class="text-black border p-2">{{ $DI->di_no ?? '-' }}</td>
                                 <td class="text-black border p-2">{{ $DI->gate ?? '-' }}</td>
-                             
+                                <td class="text-black border p-2">{{ $DI->po_number ?? '-' }}</td>
                                 <td class="text-black border p-2">{{ $DI->supplier_part_number ?? '-' }}</td>
+                                <td class="text-black border p-2">{{ $DI->baan_pn ?? '-' }}</td>
+                                <td class="text-black border p-2">{{ $DI->visteon_pn ?? '-' }}</td>
+                                <td class="text-black border p-2">{{ $DI->supplier_part_number_desc ?? '-' }}</td>
                                 <td class="text-black border p-2">{{ $DI->qty ?? '-' }}</td>
+                                <td class="text-black border p-2">{{ $DI->di_type ?? '-' }}</td>
                                 <td class="text-black border p-2">
-                                   <a href="{{ route('deliveries.show', $DI->di_no) }}" class="btn btn-info">
-                Show
-            </a>
+                                    {{ \Carbon\Carbon::parse($DI->di_received_date_string)->format('d-m-Y') }} </td>
+                                <td class="text-black border p-2">{{ $DI->di_received_time ?? '-' }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -83,8 +94,7 @@
                         <!-- Content will be loaded here -->
                     </div>
                     <div class="mt-4 flex justify-end">
-                        <button onclick="closeModal()" 
-                                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                        <button onclick="closeModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
                             Close
                         </button>
                     </div>
@@ -109,24 +119,24 @@
                 });
             </script>
 
-              {{-- Detail Tabel --}}
+            {{-- Detail Tabel --}}
             <script>
                 function showDetail(id) {
                     console.log('🔍 Mencoba mengambil data untuk ID:', id);
-                    
+
                     // Show loading state
                     document.getElementById('modalContent').innerHTML = '<div class="text-center p-4">Loading...</div>';
                     document.getElementById('detailModal').classList.remove('hidden');
                     document.getElementById('detailModal').classList.add('flex');
 
-                   const url = `/deliveries/${id}/detail`; 
+                    const url = `/deliveries/${id}/detail`;
                     console.log('🌐 URL yang dipanggil:', url);
 
-                   fetch(`/deliveries/${id}`)
+                    fetch(`/deliveries/${id}`)
                         .then(response => {
                             console.log('📡 Response status:', response.status);
                             console.log('📡 Response ok:', response.ok);
-                            
+
                             if (!response.ok) {
                                 return response.text().then(text => {
                                     console.error('❌ Response error text:', text);
@@ -139,14 +149,14 @@
                             console.log(`📦 Data berhasil diterima untuk ID ${id}:`, data);
 
                             if (!data || typeof data !== 'object') {
-                                document.getElementById('modalContent').innerHTML = 
+                                document.getElementById('modalContent').innerHTML =
                                     '<div class="text-red-500 p-4">❌ Data tidak valid atau tidak ditemukan.</div>';
                                 return;
                             }
 
                             // Create a more structured display
                             let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
-                            
+
                             // Define field labels in Indonesian
                             const fieldLabels = {
                                 'id': 'ID',
@@ -181,10 +191,10 @@
                                 }
 
                                 html += `
-                                <div class="border rounded p-3">
-                                    <div class="font-semibold text-gray-700 text-sm mb-1">${label}</div>
-                                    <div class="text-gray-900">${value ?? '-'}</div>
-                                </div>`;
+                                        <div class="border rounded p-3">
+                                            <div class="font-semibold text-gray-700 text-sm mb-1">${label}</div>
+                                            <div class="text-gray-900">${value ?? '-'}</div>
+                                        </div>`;
                             }
                             html += '</div>';
 
@@ -192,7 +202,7 @@
                         })
                         .catch(err => {
                             console.error("❌ Error saat fetch:", err);
-                            document.getElementById('modalContent').innerHTML = 
+                            document.getElementById('modalContent').innerHTML =
                                 '<div class="text-red-500 p-4">❌ Gagal mengambil detail data.</div>';
                         });
                 }
@@ -203,14 +213,14 @@
                 }
 
                 // Close modal when clicking outside
-                document.getElementById('detailModal').addEventListener('click', function(e) {
+                document.getElementById('detailModal').addEventListener('click', function (e) {
                     if (e.target === this) {
                         closeModal();
                     }
                 });
 
                 // Close modal with Escape key
-                document.addEventListener('keydown', function(e) {
+                document.addEventListener('keydown', function (e) {
                     if (e.key === 'Escape') {
                         closeModal();
                     }

@@ -24,12 +24,13 @@
                 <th>DS Number</th>
                 <th>Gate</th>
                 <th>Supplier Part Number</th>
-                 <th>DI Type</th>
+                <th>DI Type</th>
                 <th>Received Date</th>
                 <th>Received Time</th>
                 <th>Qty</th>
-       
-                
+                <th>Qty Delivery</th>
+                <th>Qty Prep</th>
+                <th>DN Number</th>
             </tr>
         </thead>
         <tbody>
@@ -38,16 +39,19 @@
                     <td>{{ $ds->ds_number }}</td>
                     <td>{{ $ds->gate }}</td>
                     <td>{{ $ds->supplier_part_number }}</td>
-                     <td>{{ $ds->di_type }}</td>
-                        <td>{{ $ds->di_received_date_string 
+                    <td>{{ $ds->di_type }}</td>
+                    <td>{{ $ds->di_received_date_string 
                         ? \Carbon\Carbon::parse($ds->di_received_date_string)->format('d-m-Y') 
                         : '-' }}</td>
                     <td>{{ $ds->di_received_time ?? '-' }}</td>  
                     <td>{{ $ds->qty }}</td>
+                    <td>{{ $ds->qty_delivery ?? '-' }}</td>
+                    <td>{{ $ds->qty_prep ?? '-' }}</td>
+                    <td>{{ $ds->dn_number ?? '-' }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" style="text-align: center;">Tidak ada data</td>
+                    <td colspan="10" style="text-align: center;">Tidak ada data</td>
                 </tr>
             @endforelse
         </tbody>

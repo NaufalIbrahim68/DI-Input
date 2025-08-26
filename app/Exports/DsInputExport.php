@@ -39,11 +39,13 @@ class DsInputExport implements FromCollection, WithHeadings
             'ds_number',
             'gate',
             'supplier_part_number',
-              'di_type',
+            'di_type',
             'di_received_time',
             'di_received_date_string',
-            'qty'
-          
+            'qty',
+            'qty_delivery',
+            'qty_prep',
+            'dn_number'
         ]);
 
         // Ubah setiap row menjadi array & format tanggal
@@ -52,12 +54,15 @@ class DsInputExport implements FromCollection, WithHeadings
                 'ds_number'               => $item->ds_number,
                 'gate'                    => $item->gate,
                 'supplier_part_number'    => $item->supplier_part_number,
-                 'di_type'                 => $item->di_type,
+                'di_type'                 => $item->di_type,
                 'di_received_time'        => $item->di_received_time,
                 'di_received_date_string' => $item->di_received_date_string
                                                 ? Carbon::parse($item->di_received_date_string)->format('d-m-Y')
                                                 : null,
                 'qty'                     => $item->qty,
+                'qty_delivery'            => $item->qty_delivery ?? 0,
+                'qty_prep'                => $item->qty_prep ?? 0,
+                'dn_number'               => $item->dn_number ?? '-',
             ];
         });
     }
@@ -73,11 +78,13 @@ class DsInputExport implements FromCollection, WithHeadings
             'DS Number',
             'Gate',
             'Supplier Part Number',
-             'DI Type',
+            'DI Type',
             'DI Received Time',
             'DI Received Date',
             'Qty',
-           
+            'Qty Delivery',
+            'Qty Prep',
+            'DN Number',
         ];
     }
 }

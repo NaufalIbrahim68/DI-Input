@@ -56,41 +56,63 @@ public function index(Request $request)
     return view('Ds_Input.edit', compact('ds'));
 }
     // ✅ Update DS
-    public function update(Request $request, $ds_number)
-    {
-        $ds = DsInput::where('ds_number', $ds_number)->firstOrFail();
+   public function update(Request $request, $ds_number)
+{
+    $ds = DsInput::where('ds_number', $ds_number)->firstOrFail();
 
-        $request->validate([
-            'gate' => 'required|string|max:50',
-            'di_type' => 'nullable|string|max:50',
-            'supplier_part_number' => 'required|string|max:100',
-            'di_received_date_string' => 'nullable|date',
-            'di_received_time' => 'nullable',
-            'flag_prep' => 'required|boolean',
-            'qty' => 'required|integer|min:1',
-        ]);
+    // Validasi hanya untuk qty_delivery dan dn_number
+    $request->validate([
+        'qty_delivery' => 'nullable|integer|min:0',
+        'dn_number' => 'nullable|string|max:50',
+    ]);
 
-        $ds->update($request->only([
-            'gate', 'di_type', 'supplier_part_number', 
-            'di_received_date_string', 'di_received_time', 
-            'flag_prep', 'qty'
-        ]));
+    // Update hanya kedua kolom ini
+    $ds->update([
+        'qty_delivery' => $request->qty_delivery ?: null,
+        'dn_number' => $request->dn_number ?: null,
+    ]);
 
-        return redirect()
-            ->route('ds_input.index', $request->only(['tanggal','page']))
-            ->with('success', "Data DS {$ds_number} berhasil diperbarui.");
-    }
+    return redirect()
+        ->route('ds_input.index', $request->only(['tanggal','page']))
+        ->with('success', "Data DS {$ds_number} berhasil diperbarui.");
+}
+
 
     // ✅ Hapus DS
-    public function destroy(Request $request, $ds_number)
-    {
+  public function destroy(Request $request, $ds_number)
+{
+    // Validasi input
+    $request->validate([
+        'password' => 'required|string',
+        'reason'   => 'required|string|max:255',
+    ]);
+
+    // Cek password (bisa diganti pakai Auth::user()->password)
+    if ($request->password !== 'admin123') {
+        return redirect()->back()->with('error', 'Password salah. DS tidak dihapus.');
+    }
+
+    try {
+        // Ambil DS
         $dsInput = DsInput::where('ds_number', $ds_number)->firstOrFail();
+
+        // Catat reason ke log (bisa juga ke tabel history)
+        Log::info("DS {$ds_number} dihapus oleh user IP: {$request->ip()}. Reason: {$request->reason}");
+
+        // Hapus DS
+        // Jika ingin soft delete pastikan model DsInput menggunakan SoftDeletes
         $dsInput->delete();
 
         return redirect()
             ->route('ds_input.index', $request->only(['tanggal','page']))
             ->with('success', "Data DS {$ds_number} berhasil dihapus.");
+        
+    } catch (\Exception $e) {
+        // Jika terjadi error
+        Log::error("Gagal menghapus DS {$ds_number}: " . $e->getMessage());
+        return redirect()->back()->with('error', "Gagal menghapus DS {$ds_number}.");
     }
+}
 
     // ✅ Export PDF
    public function exportPdf(Request $request)
