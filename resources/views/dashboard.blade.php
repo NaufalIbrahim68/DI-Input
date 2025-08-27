@@ -47,18 +47,6 @@
         <div class="h-[320px] w-full flex justify-center items-center">
           <canvas id="statusChart" class="w-full h-full drop-shadow-md rounded-xl"></canvas>
         </div>
-        
-        <!-- Summary Cards -->
-        <div class="grid grid-cols-2 gap-4 mt-4">
-          <div class="bg-green-50 p-3 rounded-lg border border-green-200">
-            <div class="text-green-800 text-sm font-medium">Completed</div>
-            <div class="text-green-900 text-xl font-bold" id="completedCount">{{ $statusData['completed'] ?? 0 }}</div>
-          </div>
-          <div class="bg-red-50 p-3 rounded-lg border border-red-200">
-            <div class="text-red-800 text-sm font-medium">Non Completed</div>
-            <div class="text-red-900 text-xl font-bold" id="nonCompletedCount">{{ $statusData['non_completed'] ?? 0 }}</div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -164,166 +152,136 @@
         '#f97316', // oranye
       ];
 
-      // Fungsi render chart timeline (kiri)
-      function renderChart(labels, data) {
-        const ctx = document.getElementById('myChart').getContext('2d');
+      </script>
 
-        // Hapus chart sebelumnya jika ada
-        if (chartInstance) {
-          chartInstance.destroy();
-        }
+<script>
+  // Fungsi render chart timeline (kiri)
+  function renderChart(labels, data) {
+    const ctx = document.getElementById('myChart').getContext('2d');
 
-        chartInstance = new Chart(ctx, {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [{
-              label: 'Total Qty',
-              data: data,
-              backgroundColor: labels.map((_, i) =>
-                hexToRgba(colors[i % colors.length], 0.3)
-              ),
-              borderColor: labels.map((_, i) =>
-                hexToRgba(colors[i % colors.length], 0.6)
-              ),
-              borderWidth: 1,
-              hoverBackgroundColor: labels.map((_, i) =>
-                hexToRgba(colors[i % colors.length], 0.5)
-              )
-            }]
+    if (chartInstance) {
+      chartInstance.destroy();
+    }
+
+    chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Total Qty',
+          data: data,
+          backgroundColor: labels.map((_, i) =>
+            hexToRgba(colors[i % colors.length], 0.3)
+          ),
+          borderColor: labels.map((_, i) =>
+            hexToRgba(colors[i % colors.length], 0.6)
+          ),
+          borderWidth: 1,
+          hoverBackgroundColor: labels.map((_, i) =>
+            hexToRgba(colors[i % colors.length], 0.5)
+          )
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#000' },
+            title: { display: true, text: 'Qty', color: '#000' }
           },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              y: {
-                beginAtZero: true,
-                ticks: { color: '#000' },
-                title: {
-                  display: true,
-                  text: 'Qty',
-                  color: '#000'
-                }
-              },
-              x: {
-                ticks: { color: '#000' },
-                title: {
-                  display: true,
-                  text: 'Tanggal',
-                  color: '#000'
-                }
-              }
-            },
-            plugins: {
-              legend: {
-                labels: {
-                  color: '#000'
-                }
-              },
-              tooltip: {
-                backgroundColor: 'rgba(0,0,0,0.7)',
-                titleColor: '#fff',
-                bodyColor: '#fff',
-              }
-            }
-          }
-        });
-      }
-
-      // Fungsi render chart status preparation (kanan)
-     function renderStatusChart() {
-  const ctx = document.getElementById('statusChart').getContext('2d');
-
-  // Hapus chart sebelumnya jika ada
-  if (statusChartInstance) {
-    statusChartInstance.destroy();
-  }
-
-  const completed = statusData.completed || 0;
-  const nonCompleted = statusData.non_completed || 0;
-
-  statusChartInstance = new Chart(ctx, {
-    type: 'bar', // ganti menjadi bar chart
-    data: {
-      labels: ['Completed', 'Non Completed'],
-      datasets: [{
-        label: 'Jumlah',
-        data: [completed, nonCompleted],
-        backgroundColor: [
-          'rgba(34, 197, 94, 0.8)', // hijau
-          'rgba(239, 68, 68, 0.8)'  // merah
-        ],
-        borderColor: [
-          'rgba(34, 197, 94, 1)',
-          'rgba(239, 68, 68, 1)'
-        ],
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { color: '#000' },
-          title: {
-            display: true,
-            text: 'Jumlah',
-            color: '#000'
+          x: {
+            ticks: { color: '#000' },
+            title: { display: true, text: 'Tanggal', color: '#000' }
           }
         },
-        x: {
-          ticks: { color: '#000' },
-          title: {
-            display: true,
-            text: 'Status',
-            color: '#000'
+        plugins: {
+          legend: { labels: { color: '#000' } },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            titleColor: '#fff',
+            bodyColor: '#fff',
           }
         }
+      }
+    });
+  }
+
+  // Fungsi render chart status preparation (kanan) pakai Doughnut
+  function renderStatusChart() {
+    const ctx = document.getElementById('statusChart').getContext('2d');
+
+    if (statusChartInstance) {
+      statusChartInstance.destroy();
+    }
+
+    const completed = statusData.completed || 0;
+    const partial   = statusData.partial || 0;
+
+    statusChartInstance = new Chart(ctx, {
+      type: 'doughnut', 
+      data: {
+        labels: ['Completed', 'Partial'],
+        datasets: [{
+          data: [completed, partial],
+          backgroundColor: [
+            'rgba(34, 197, 94, 0.8)', // hijau
+            'rgba(234, 179, 8, 0.8)'  // kuning
+          ],
+          borderColor: [
+            'rgba(34, 197, 94, 1)',
+            'rgba(234, 179, 8, 1)'
+          ],
+          borderWidth: 1
+        }]
       },
-      plugins: {
-        legend: { display: false }, // hilangkan legenda
-        tooltip: {
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          titleColor: '#fff',
-          bodyColor: '#fff',
-          callbacks: {
-            label: function(context) {
-              const value = context.parsed.y;
-              const total = completed + nonCompleted;
-              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-              return `${context.label}: ${value} (${percentage}%)`;
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: '#000' }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            callbacks: {
+              label: function(context) {
+                const value = context.parsed;
+                const total = completed + partial;
+                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                return `${context.label}: ${value} (${percentage}%)`;
+              }
             }
           }
         }
       }
+    });
+  }
+
+  // Jalankan saat halaman selesai dimuat
+  document.addEventListener('DOMContentLoaded', () => {
+    const selector = document.getElementById('dateSelector');
+    const defaultGroup = chartConfig[0];
+
+    if (defaultGroup) {
+      renderChart(defaultGroup.labels, defaultGroup.data);
     }
+
+    renderStatusChart();
+
+    selector.addEventListener('change', function () {
+      const index = this.value;
+      const selected = chartConfig[index];
+      if (selected) {
+        renderChart(selected.labels, selected.data);
+      }
+    });
   });
-}
+</script>
 
-      // Jalankan saat halaman selesai dimuat
-      document.addEventListener('DOMContentLoaded', () => {
-        const selector = document.getElementById('dateSelector');
-        const defaultGroup = chartConfig[0];
-
-        // Render chart timeline (kiri)
-        if (defaultGroup) {
-          renderChart(defaultGroup.labels, defaultGroup.data);
-        }
-
-        // Render chart status preparation (kanan)
-        renderStatusChart();
-
-        // Event listener untuk perubahan tanggal pada chart timeline
-        selector.addEventListener('change', function () {
-          const index = this.value;
-          const selected = chartConfig[index];
-          if (selected) {
-            renderChart(selected.labels, selected.data);
-          }
-        });
-      });
-    </script>
 
   @endsection

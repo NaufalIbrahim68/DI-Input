@@ -20,35 +20,40 @@ class DashboardController extends Controller
             $tanggal = Carbon::createFromFormat('Y-m-d', $tanggalInput)->format('Y-m-d');
         }
 
-        $query = DiInputModel::query();
+        // ==========================
+        // Query utama (untuk timeline & total qty)
+        // ==========================
+        $baseQuery = DiInputModel::query();
 
         if ($tanggal) {
-            $query->where('di_received_date_string', $tanggal);
+            $baseQuery->where('di_received_date_string', $tanggal);
         }
 
-        // Filter supplier part number (hapus spasi untuk pencocokan lebih fleksibel)
         if ($supplierPartNumber) {
-            $query->whereRaw(
+            $baseQuery->whereRaw(
                 "REPLACE(supplier_part_number, ' ', '') LIKE ?",
                 ['%' . str_replace(' ', '', $supplierPartNumber) . '%']
             );
         }
 
-        $query->orderByDesc('di_received_date_string');
+        $baseQuery->orderByDesc('di_received_date_string');
 
         // Cek apakah ada filter
         $isFiltered = $tanggal || $supplierPartNumber;
 
         // Kalau ada filter → paginate(10), kalau tidak → ambil 5 data (tanpa pagination)
         if ($isFiltered) {
-            $timeline = $query->paginate(10)->appends($request->all());
+            $timeline = (clone $baseQuery)->paginate(10)->appends($request->all());
         } else {
-            $timeline = $query->limit(5)->get(); // tanpa pagination
+            $timeline = (clone $baseQuery)->limit(5)->get();
         }
 
-        $totalQty = $timeline->sum('qty');
+        // Hitung total qty dari query yang sudah difilter (bukan dari timeline)
+        $totalQty = (clone $baseQuery)->sum('qty');
 
+        // ==========================
         // Data untuk chart (group berdasarkan tanggal di DB, format d-m-Y)
+        // ==========================
         $fullChartData = DiInputModel::selectRaw("
                 di_received_date_string as tanggal,
                 SUM(ISNULL(qty, 0)) as total_qty
@@ -73,33 +78,40 @@ class DashboardController extends Controller
         // ==========================
         // Data status preparation 7 hari terakhir
         // ==========================
-        
-        // Hitung tanggal 7 hari yang lalu dalam format string yang sesuai dengan database
-       $sevenDaysAgo = Carbon::now()->subDays(7)->format('Y-m-d');
+       // ==========================
+// Data status preparation 7 hari terakhir (berdasarkan qty_delivery vs qty)
+// ==========================
+$sevenDaysAgo = Carbon::now()->subDays(7)->format('Y-m-d');
 
-// Completed = flag = 1
-$completed = DsInput::where('di_received_date_string', '>=', $sevenDaysAgo)
-    ->where('flag', 1)
-    ->count();
+$dsInputs = DsInput::where('di_received_date_string', '>=', $sevenDaysAgo)->get();
 
-// Non Completed = flag = 0
-$nonCompleted = DsInput::where('di_received_date_string', '>=', $sevenDaysAgo)
-    ->where('flag', 0)
-    ->count();
+$completed = 0;
+$partial = 0;
 
-// Format data untuk chart status
+foreach ($dsInputs as $ds) {
+    $qtyDelivery = (int) ($ds->qty_delivery ?? 0);
+    $qtyDs = (int) ($ds->qty ?? 0);
+
+    if ($qtyDelivery == $qtyDs && $qtyDs > 0) {
+        $completed++;
+    } else {
+        $partial++;
+    }
+}
+
 $statusData = [
     'completed' => $completed,
-    'non_completed' => $nonCompleted,
+    'partial'   => $partial,
 ];
+
         return view('dashboard', [
-            'timeline' => $timeline,
-            'chartLabels' => $groupedChartData->first()['labels'] ?? [],
-            'chartData' => $groupedChartData->first()['data'] ?? [],
-            'groupedChartData' => $groupedChartData,
-            'totalQty' => $totalQty,
-            'isFiltered' => $isFiltered,
-            'statusData' => $statusData, // sesuaikan nama variabel dengan yang digunakan di view
-        ]);
+    'timeline' => $timeline,
+    'chartLabels' => $groupedChartData->first()['labels'] ?? [],
+    'chartData' => $groupedChartData->first()['data'] ?? [],
+    'groupedChartData' => $groupedChartData,
+    'totalQty' => $totalQty,
+    'isFiltered' => $isFiltered,
+    'statusData' => $statusData, // sekarang pakai completed/partial
+]);
     }
 }
