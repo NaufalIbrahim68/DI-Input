@@ -45,9 +45,15 @@
                         : '-' }}</td>
                     <td>{{ $ds->di_received_time ?? '-' }}</td>  
                     <td>{{ $ds->qty }}</td>
-                    <td>{{ $ds->qty_delivery ?? '-' }}</td>
-                    <td>{{ $ds->qty_prep ?? '-' }}</td>
-                    <td>{{ $ds->dn_number ?? '-' }}</td>
+                    <td class="text-black">
+    {{ ($ds->qty_delivery ?? 0) > 0 ? $ds->qty_delivery : '' }}
+</td>
+                   <td class="text-black">
+    {{ ($ds->qty_prep ?? 0) > 0 ? $ds->qty_prep : '' }}
+</td>
+                    <td class="text-black">
+    {{ ($ds->dn_number ?? 0) > 0 ? $ds->dn_number : '' }}
+</td>
                 </tr>
             @empty
                 <tr>
