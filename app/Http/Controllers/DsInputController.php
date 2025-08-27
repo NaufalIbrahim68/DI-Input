@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\DsInputExport; 
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class DsInputController extends Controller
 {
@@ -79,38 +81,74 @@ public function index(Request $request)
 
 
     // ✅ Hapus DS
-  public function destroy(Request $request, $ds_number)
+  public function destroy($ds_number, Request $request)
 {
-    // Validasi input
+    // 1. Validasi input terlebih dahulu
     $request->validate([
-        'password' => 'required|string',
-        'reason'   => 'required|string|max:255',
+        'password' => 'required',
+        'reason' => 'required|min:5'
+    ], [
+        'password.required' => 'Password wajib diisi',
+        'reason.required' => 'Alasan hapus wajib diisi',
+        'reason.min' => 'Alasan hapus minimal 5 karakter'
     ]);
+    
+    $specialPassword = env('DS_DELETE_PASSWORD');
 
-    // Cek password (bisa diganti pakai Auth::user()->password)
-    if ($request->password !== 'admin123') {
-        return redirect()->back()->with('error', 'Password salah. DS tidak dihapus.');
+     if ($request->password !== $specialPassword) {
+        return redirect()->back()
+            ->withInput()
+            ->with('error', 'Password yang anda masukkan salah');
     }
-
+    
     try {
-        // Ambil DS
-        $dsInput = DsInput::where('ds_number', $ds_number)->firstOrFail();
-
-        // Catat reason ke log (bisa juga ke tabel history)
-        Log::info("DS {$ds_number} dihapus oleh user IP: {$request->ip()}. Reason: {$request->reason}");
-
-        // Hapus DS
-        // Jika ingin soft delete pastikan model DsInput menggunakan SoftDeletes
-        $dsInput->delete();
-
-        return redirect()
-            ->route('ds_input.index', $request->only(['tanggal','page']))
-            ->with('success', "Data DS {$ds_number} berhasil dihapus.");
+        // 3. Cek apakah DS exists terlebih dahulu
+        $dsExists = DB::table('ds_input')
+            ->where('ds_number', $ds_number)
+            ->exists();
+            
+        if (!$dsExists) {
+            return redirect()->back()->with('error', 'DS tidak ditemukan');
+        }
+        
+        // 4. Log aktivitas penghapusan sebelum delete (untuk audit trail)
+        Log::info('DS Delete Attempt', [
+            'ds_number' => $ds_number,
+            'deleted_by' => Auth::user()->name ?? 'Unknown',
+            'user_id' => Auth::id(),
+            'reason' => $request->reason,
+            'timestamp' => now(),
+            'ip_address' => $request->ip()
+        ]);
+        
+        // 5. Lakukan penghapusan
+        $deleted = DB::table('ds_input')
+            ->where('ds_number', $ds_number)
+            ->delete();
+            
+        if ($deleted) {
+            // Log sukses
+            Log::info('DS Successfully Deleted', [
+                'ds_number' => $ds_number,
+                'deleted_by' => Auth::user()->name ?? 'Unknown',
+                'reason' => $request->reason
+            ]);
+            
+            return redirect()->back()->with('success', 'DS ' . $ds_number . ' berhasil dihapus');
+        } else {
+            return redirect()->back()->with('error', 'Gagal menghapus DS');
+        }
         
     } catch (\Exception $e) {
-        // Jika terjadi error
-        Log::error("Gagal menghapus DS {$ds_number}: " . $e->getMessage());
-        return redirect()->back()->with('error', "Gagal menghapus DS {$ds_number}.");
+        // Log error untuk debugging
+        Log::error('DS Delete Error', [
+            'ds_number' => $ds_number,
+            'error' => $e->getMessage(),
+            'user_id' => Auth::id(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return redirect()->back()->with('error', 'Gagal menghapus DS: ' . $e->getMessage());
     }
 }
 

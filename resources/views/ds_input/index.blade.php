@@ -58,166 +58,464 @@
         </a>
     </div>
 
-    <div class="table-responsive" style="overflow-x:auto; width:100%;">
-        <table id="example" class="table table-bordered table-sm bg-white small">
-            <thead class="bg-black text-white">
-                <tr>
-                    <th>No</th>
-                    <th>DS Number</th>
-                    <th>Gate</th>
-                    <th>DI Type</th>
-                    <th>Supplier Part Number</th>
-                    <th>Received Date</th>
-                    <th>Received Time</th>
-                    <th>Qty</th>
-                    <th>Qty Prep</th>   
-                    <th>Status Preparation</th>
-                    <th>Qty Delivery</th> 
-                    <th>Status Delivery</th>
-                    <th>DN Number</th>    
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if($dsInputs && $dsInputs->count() > 0)
-                    @foreach ($dsInputs as $index => $ds)
-                        <tr>
-                            <td class="text-black">{{ $index + 1 }}</td>
-                            <td class="text-black">{{ $ds->ds_number ?? '-' }}</td>
-                            <td class="text-black">{{ $ds->gate ?? '-' }}</td>
-                            <td class="text-black">{{ $ds->di_type ?? '-' }}</td>
-                            <td class="text-black">{{ $ds->supplier_part_number ?? '-' }}</td>
-                            <td class="text-black">
-                                {{ !empty($ds->di_received_date_string)
-                                    ? \Carbon\Carbon::parse($ds->di_received_date_string)->format('d-m-Y')
-                                    : '-' }}
-                            </td>
-                            <td class="text-black">{{ $ds->di_received_time ?? '-' }}</td>
-                            <td class="text-black">{{ $ds->qty ?? '-' }}</td>
-                            <td class="text-black">{{ $ds->qty_prep ?? '' }}</td>
-                            <td class="text-black">
-                                @if($ds->flag_prep == 1)
-                                    <span class="badge bg-success text-white">Completed</span>
-                                @else
-                                    <span class="badge bg-primary text-white">Non Completed</span>
-                                @endif
-                            </td>
+<div class="table-responsive" style="overflow-x:auto; width:100%;">
+    <table id="example" class="table table-bordered table-sm bg-white small">
+        <thead class="bg-black text-white">
+            <tr>
+                <th>No</th>
+                <th>DS Number</th>
+                <th>Gate</th>
+                <th>DI Type</th>
+                <th>Supplier Part Number</th>
+                <th>Received Date</th>
+                <th>Received Time</th>
+                <th>Qty</th>
+                <th>Qty Prep</th>   
+                <th>Status Preparation</th>
+                <th>Qty Delivery</th> 
+                <th>Status Delivery</th>
+                <th>DN Number</th>    
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if($dsInputs && $dsInputs->count() > 0)
+                @foreach ($dsInputs as $index => $ds)
+                    <tr data-ds-number="{{ $ds->ds_number }}">
+                        <td class="text-black">{{ $index + 1 }}</td>
+                        <td class="text-black">{{ $ds->ds_number ?? '-' }}</td>
+                        <td class="text-black">{{ $ds->gate ?? '-' }}</td>
+                        <td class="text-black">{{ $ds->di_type ?? '-' }}</td>
+                        <td class="text-black">{{ $ds->supplier_part_number ?? '-' }}</td>
+                        <td class="text-black">
+                            {{ !empty($ds->di_received_date_string)
+                                ? \Carbon\Carbon::parse($ds->di_received_date_string)->format('d-m-Y')
+                                : '-' }}
+                        </td>
+                        <td class="text-black">{{ $ds->di_received_time ?? '-' }}</td>
+                        <td class="text-black">{{ $ds->qty ?? '-' }}</td>
+                       <td class="text-black">
+    {{ ($ds->qty_prep ?? 0) > 0 ? $ds->qty_prep : '' }}
+</td>
+                       <td class="text-black">
+    @php
+        $qtyDI   = (int) ($ds->qty ?? 0);
+        $qtyPrep = (int) ($ds->qty_prep ?? 0);
 
-                            {{-- Form untuk update qty_delivery & dn_number --}}
-                            <form action="{{ route('ds_input.update', $ds->ds_number) }}" method="POST">
-                                @csrf
-                                @method('PUT')
-                                <td>
-                                    <input type="number" name="qty_delivery" value="{{ $ds->qty_delivery ?? '' }}" class="form-control form-control-sm text-center">
-                                </td>
-                                <td>
+        if ($qtyPrep < $qtyDI) {
+            $statusPrep = $qtyPrep - $qtyDI; // negatif
+        } elseif ($qtyPrep == $qtyDI) {
+            $statusPrep = 'Completed';
+        } else { // qtyPrep > qtyDI
+            $statusPrep = 'Over';
+        }
+    @endphp
+
+    @if(is_numeric($statusPrep) && $statusPrep < 0)
+        <span class="badge bg-danger text-white">{{ $statusPrep }}</span>
+    @elseif($statusPrep === 'Completed')
+        <span class="badge bg-success text-white">{{ $statusPrep }}</span>
+    @elseif($statusPrep === 'Over')
+        <span class="badge bg-warning text-white">{{ $statusPrep }}</span>
+    @endif
+</td>
+                        <td>
+                            <input type="number" name="qty_delivery" value="{{ $ds->qty_delivery ?? '' }}" 
+                                   class="form-control form-control-sm text-center qty-delivery-input" 
+                                   data-ds-number="{{ $ds->ds_number }}">
+                        </td>
+                       <td>
     @php
         $qtyDelivery = (int) ($ds->qty_delivery ?? 0); 
         $qtyDs = (int) ($ds->qty ?? 0);               
 
-        if ($qtyDelivery == 0) {
-            $status = 'not completed';
-        } elseif ($qtyDelivery < $qtyDs) {
-            $status = 'partial';
-        } else {
+        if ($qtyDelivery == $qtyDs && $qtyDs > 0) {
             $status = 'completed';
+        } else {
+            $status = 'partial';
         }
     @endphp
 
-    @switch($status)
-        @case('completed') 
-            <span class="badge bg-success text-white">Completed</span> 
-            @break
-        @case('partial')   
-            <span class="badge bg-warning text-white">Partial</span>   
-            @break
-        @default            
-            <span class="badge bg-primary text-white">Non Completed</span>
-    @endswitch
+    <span class="status-badge" data-ds-number="{{ $ds->ds_number }}">
+        @if($status === 'completed')
+            <span class="badge bg-success text-white">Completed</span>
+        @else
+            <span class="badge bg-warning text-white">Partial</span>
+        @endif
+    </span>
 </td>
-                                <td>
-                                    <input type="text" name="dn_number" value="{{ $ds->dn_number ?? '' }}" class="form-control form-control-sm text-center">
-                                </td>
-                                <td class="text-center">
-                                    <div class="d-flex gap-1 justify-content-center align-items-center">
-                                        {{-- Save Button --}}
-                                        <button type="submit" class="btn btn-sm btn-success" title="Simpan">
-                                            <i class="fas fa-save"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </form>
 
-                            <td class="text-center">
-                                <button type="button" class="btn btn-sm btn-danger btn-delete-ds" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#deleteModal" 
-                                    data-ds_number="{{ $ds->ds_number }}" 
-                                    title="Hapus">
+                        <td>
+                            <input type="text" name="dn_number" value="{{ $ds->dn_number ?? '' }}" 
+                                   class="form-control form-control-sm text-center dn-number-input" 
+                                   data-ds-number="{{ $ds->ds_number }}">
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex gap-1 justify-content-center align-items-center">
+                                {{-- Save Button --}}
+                                <button type="button" class="btn btn-sm btn-success btn-save-ds" 
+                                        data-ds-number="{{ $ds->ds_number }}" 
+                                        data-update-url="{{ route('ds_input.update', $ds->ds_number) }}" 
+                                        title="Simpan">
+                                    <i class="fas fa-save"></i>
+                                </button>
+                                
+                                {{-- Delete Button --}}
+                                <button type="button" 
+                                        class="btn btn-sm btn-danger btn-delete-ds" 
+                                        onclick="openDeleteModal('{{ $ds->ds_number }}', '{{ route('ds_input.destroy', $ds->ds_number) }}')"
+                                        title="Hapus">
                                     <i class="fas fa-trash"></i>
                                 </button>
-                            </td>
-                        </tr>
-                    @endforeach
-                @else
-                    <tr>
-                        <td colspan="14" class="text-center text-muted py-4">
-                            <i class="fas fa-calendar-alt fa-2x mb-2 text-muted"></i>
-                            <br>Pilih tanggal untuk menampilkan DS.
+                            </div>
                         </td>
                     </tr>
-                @endif
-            </tbody>
-        </table>
-    </div>
+                @endforeach
+            @else
+                <tr>
+                    <td colspan="14" class="text-center text-muted py-4">
+                        <i class="fas fa-calendar-alt fa-2x mb-2 text-muted"></i>
+                        <br>Pilih tanggal untuk menampilkan DS.
+                    </td>
+                </tr>
+            @endif
+        </tbody>
+    </table>
+</div>
 
-{{-- Modal Delete Tunggal --}}
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <form id="formDeleteDS" action="" method="POST">
-            @csrf
-            @method('DELETE')
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteModalLabel">Hapus DS</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
+{{--Modal Delete--}}
+<div id="deleteModal" class="custom-modal" style="display: none;">
+    <div class="custom-modal-backdrop" onclick="closeDeleteModal()"></div>
+    <div class="custom-modal-dialog">
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h5 id="deleteModalLabel">Hapus DS</h5>
+                <button type="button" class="custom-close-btn" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <form id="formDeleteDS" action="" method="POST">
+                @csrf
+                @method('DELETE')
+                <div class="custom-modal-body">
+                    <div class="form-group mb-3">
                         <label for="password" class="form-label">Masukkan Password</label>
                         <input type="password" name="password" id="password" class="form-control" required autocomplete="off">
                     </div>
-                    <div class="mb-3">
+                    <div class="form-group mb-3">
                         <label for="reason" class="form-label">Alasan Hapus</label>
                         <textarea name="reason" id="reason" class="form-control" rows="3" required></textarea>
                     </div>
                     <p>Apakah Anda yakin ingin menghapus DS ini?</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-danger">Hapus</button>
+                <div class="custom-modal-footer">
+                    <button type="button" class="btn btn-secondary custom-btn-cancel" onclick="closeDeleteModal()">Batal</button>
+                    <button type="submit" class="btn btn-danger custom-btn-delete" onclick="return confirmDelete()">Hapus</button>
                 </div>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 
-{{-- JS untuk set action modal --}}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const deleteButtons = document.querySelectorAll('.btn-delete-ds');
-    const formDelete = document.getElementById('formDeleteDS');
+{{-- Hidden forms untuk submit data --}}
+<div id="hiddenForms" style="display: none;">
+    @if($dsInputs && $dsInputs->count() > 0)
+        @foreach ($dsInputs as $ds)
+            <form id="updateForm_{{ $ds->ds_number }}" action="{{ route('ds_input.update', $ds->ds_number) }}" method="POST">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="qty_delivery" id="hiddenQtyDelivery_{{ $ds->ds_number }}">
+                <input type="hidden" name="dn_number" id="hiddenDnNumber_{{ $ds->ds_number }}">
+            </form>
+        @endforeach
+    @endif
+</div>
 
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function () {
-            formDelete.action = this.getAttribute('data-url');
-            const dsNumber = this.getAttribute('data-ds_number');
-            document.getElementById('deleteModalLabel').innerText = 'Hapus DS ' + dsNumber;
+<script>
+function openDeleteModal(dsNumber, deleteUrl) {
+    console.log('Opening delete modal for DS:', dsNumber);
+    console.log('Delete URL:', deleteUrl);
+    
+    
+    document.getElementById('formDeleteDS').action = deleteUrl;
+    
+   
+    document.getElementById('deleteModalLabel').innerText = 'Hapus DS ' + dsNumber;
+    
+  
+    document.getElementById('password').value = '';
+    document.getElementById('reason').value = '';
+    
+    
+    document.getElementById('deleteModal').style.display = 'block';
+    document.body.classList.add('modal-open');
+}
+
+// Fungsi untuk close modal
+function closeDeleteModal() {
+    console.log('Closing delete modal...');
+    document.getElementById('deleteModal').style.display = 'none';
+    document.body.classList.remove('modal-open');
+    
+    // Reset form
+    document.getElementById('password').value = '';
+    document.getElementById('reason').value = '';
+}
+
+// Fungsi untuk konfirmasi delete
+function confirmDelete() {
+    const password = document.getElementById('password').value.trim();
+    const reason = document.getElementById('reason').value.trim();
+    
+    if (!password || !reason) {
+        alert('Password dan alasan hapus harus diisi!');
+        return false;
+    }
+    
+    return confirm('Apakah Anda yakin ingin menghapus Data DS ini?');
+}
+
+// Close modal dengan ESC key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeDeleteModal();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('DOM loaded...');
+
+    // Initialize save buttons
+    const saveButtons = document.querySelectorAll('.btn-save-ds');
+    
+    saveButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const dsNumber = this.getAttribute('data-ds-number');
+            const qtyDeliveryInput = document.querySelector(`input[name="qty_delivery"][data-ds-number="${dsNumber}"]`);
+            const dnNumberInput = document.querySelector(`input[name="dn_number"][data-ds-number="${dsNumber}"]`);
+            
+            // Set values in hidden form
+            document.getElementById(`hiddenQtyDelivery_${dsNumber}`).value = qtyDeliveryInput.value;
+            document.getElementById(`hiddenDnNumber_${dsNumber}`).value = dnNumberInput.value;
+            
+            // Submit form
+            document.getElementById(`updateForm_${dsNumber}`).submit();
         });
     });
+
+    // Handle form submission validation
+    if (formDelete) {
+        formDelete.addEventListener('submit', function(e) {
+            const password = passwordInput.value.trim();
+            const reason = reasonInput.value.trim();
+            
+            if (!password || !reason) {
+                e.preventDefault();
+                alert('Password dan alasan hapus harus diisi!');
+                return false;
+            }
+        });
+    }
+
+    // Debug: Test if buttons are clickable
+    setTimeout(() => {
+        const testButton = document.querySelector('.btn-delete-ds');
+        if (testButton) {
+            console.log('Test button found:', testButton);
+            console.log('Button style:', window.getComputedStyle(testButton));
+            console.log('Button z-index:', window.getComputedStyle(testButton).zIndex);
+        }
+    }, 1000);
 });
+
+// Fallback untuk debugging
+setTimeout(() => {
+    console.log('Checking for any JavaScript errors...');
+    const deleteButtons = document.querySelectorAll('.btn-delete-ds');
+    console.log('Delete buttons found after timeout:', deleteButtons.length);
+    
+    deleteButtons.forEach((btn, index) => {
+        console.log(`Button ${index}:`, btn, 'Is visible:', btn.offsetParent !== null);
+    });
+}, 2000);
 </script>
 
+<style>
+/* Pastikan z-index yang benar */
+.btn {
+    position: relative;
+    z-index: 1;
+}
+
+.table td {
+    position: relative;
+}
+
+/* Debug styles */
+.btn-delete-ds {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+.btn-delete-ds:hover {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    opacity: 0.8;
+}
+
+/* Custom Modal Styles */
+.custom-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    overflow: auto;
+}
+
+.custom-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1;
+}
+
+.custom-modal-dialog {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.custom-modal-content {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    max-width: 500px;
+    width: 100%;
+    position: relative;
+}
+
+.custom-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    background: #f8f9fa;
+    border-radius: 8px 8px 0 0;
+}
+
+.custom-modal-header h5 {
+    margin: 0;
+    flex: 1;
+    font-size: 1.25rem;
+    font-weight: 500;
+}
+
+.custom-close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    margin-left: auto;
+}
+
+.custom-close-btn:hover {
+    color: #000;
+    background: #e9ecef;
+    border-radius: 4px;
+}
+
+.custom-modal-body {
+    padding: 20px;
+}
+
+.custom-modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background: #f8f9fa;
+    border-radius: 0 0 8px 8px;
+}
+
+.custom-btn-cancel,
+.custom-btn-delete {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer !important;
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 80px;
+    transition: all 0.2s;
+}
+
+.custom-btn-cancel {
+    background: #6c757d;
+    color: white;
+}
+
+.custom-btn-cancel:hover {
+    background: #5a6268 !important;
+    transform: translateY(-1px);
+}
+
+.custom-btn-delete {
+    background: #dc3545;
+    color: white;
+}
+
+.custom-btn-delete:hover {
+    background: #c82333 !important;
+    transform: translateY(-1px);
+}
+
+/* Prevent body scroll when modal is open */
+body.modal-open {
+    overflow: hidden;
+}
+
+/* Form styles */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+</style>
 <!-- jQuery & DataTables -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
