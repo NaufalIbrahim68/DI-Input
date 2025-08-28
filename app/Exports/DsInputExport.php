@@ -11,21 +11,11 @@ class DsInputExport implements FromCollection, WithHeadings
 {
     protected $tanggal;
 
-    /**
-     * Terima tanggal saat membuat instance export
-     *
-     * @param string|null $tanggal
-     */
     public function __construct($tanggal = null)
     {
         $this->tanggal = $tanggal;
     }
 
-    /**
-     * Ambil data untuk diexport
-     *
-     * @return \Illuminate\Support\Collection
-     */
     public function collection()
     {
         $query = DsInput::query();
@@ -40,38 +30,32 @@ class DsInputExport implements FromCollection, WithHeadings
             'gate',
             'supplier_part_number',
             'di_type',
-            'di_received_time',
             'di_received_date_string',
+            'di_received_time',
             'qty',
             'qty_delivery',
             'qty_prep',
             'dn_number'
         ]);
 
-        // Ubah setiap row menjadi array & format tanggal
         return $data->map(function ($item) {
             return [
                 'ds_number'               => $item->ds_number,
                 'gate'                    => $item->gate,
                 'supplier_part_number'    => $item->supplier_part_number,
                 'di_type'                 => $item->di_type,
-                'di_received_time'        => $item->di_received_time,
                 'di_received_date_string' => $item->di_received_date_string
                                                 ? Carbon::parse($item->di_received_date_string)->format('d-m-Y')
-                                                : null,
+                                                : '-',
+                'di_received_time'        => $item->di_received_time ?? '-',
                 'qty'                     => $item->qty,
-                'qty_delivery'            => $item->qty_delivery ?? 0,
-                'qty_prep'                => $item->qty_prep ?? 0,
-                'dn_number'               => $item->dn_number ?? '-',
+                'qty_delivery'            => ($item->qty_delivery ?? 0) > 0 ? $item->qty_delivery : '',
+                'qty_prep'                => ($item->qty_prep ?? 0) > 0 ? $item->qty_prep : '',
+                'dn_number'               => ($item->dn_number ?? 0) > 0 ? $item->dn_number : '',
             ];
         });
     }
 
-    /**
-     * Header Excel
-     *
-     * @return array
-     */
     public function headings(): array
     {
         return [
@@ -79,8 +63,8 @@ class DsInputExport implements FromCollection, WithHeadings
             'Gate',
             'Supplier Part Number',
             'DI Type',
-            'DI Received Time',
-            'DI Received Date',
+            'Received Date',
+            'Received Time',
             'Qty',
             'Qty Delivery',
             'Qty Prep',
