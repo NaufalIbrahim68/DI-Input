@@ -86,76 +86,84 @@ public function index(Request $request)
 
 
     // ✅ Hapus DS
-  public function destroy($ds_number, Request $request)
+public function destroy($ds_number, Request $request)
 {
-    // 1. Validasi input terlebih dahulu
+    // 1. Validasi input
     $request->validate([
         'password' => 'required',
-        'reason' => 'required|min:5'
+        'reason'   => 'required|min:5'
     ], [
         'password.required' => 'Password wajib diisi',
-        'reason.required' => 'Alasan hapus wajib diisi',
-        'reason.min' => 'Alasan hapus minimal 5 karakter'
+        'reason.required'   => 'Alasan hapus wajib diisi',
+        'reason.min'        => 'Alasan hapus minimal 5 karakter'
     ]);
     
     $specialPassword = env('DS_DELETE_PASSWORD');
 
-     if ($request->password !== $specialPassword) {
+    if ($request->password !== $specialPassword) {
         return redirect()->back()
             ->withInput()
             ->with('error', 'Password yang anda masukkan salah');
     }
-    
+
     try {
-        // 3. Cek apakah DS exists terlebih dahulu
+        DB::beginTransaction();
+
+        // Cek apakah DS ada
         $dsExists = DB::table('ds_input')
             ->where('ds_number', $ds_number)
             ->exists();
-            
+
         if (!$dsExists) {
+            DB::rollBack();
             return redirect()->back()->with('error', 'DS tidak ditemukan');
         }
-        
-        // 4. Log aktivitas penghapusan sebelum delete (untuk audit trail)
+
+        // Log attempt
         Log::info('DS Delete Attempt', [
             'ds_number' => $ds_number,
             'deleted_by' => Auth::user()->name ?? 'Unknown',
-            'user_id' => Auth::id(),
-            'reason' => $request->reason,
+            'user_id'   => Auth::id(),
+            'reason'    => $request->reason,
             'timestamp' => now(),
-            'ip_address' => $request->ip()
+            'ip_address'=> $request->ip()
         ]);
-        
-        // 5. Lakukan penghapusan
-        $deleted = DB::table('ds_input')
+
+        // 2. Hapus dari ds_input
+        DB::table('ds_input')
             ->where('ds_number', $ds_number)
             ->delete();
-            
-        if ($deleted) {
-            // Log sukses
-            Log::info('DS Successfully Deleted', [
-                'ds_number' => $ds_number,
-                'deleted_by' => Auth::user()->name ?? 'Unknown',
-                'reason' => $request->reason
-            ]);
-            
-            return redirect()->back()->with('success', 'DS ' . $ds_number . ' berhasil dihapus');
-        } else {
-            return redirect()->back()->with('error', 'Gagal menghapus DS');
-        }
-        
+
+        // 3. Hapus juga dari di_input
+        DB::table('di_input')
+            ->where('ds_number', $ds_number)
+            ->delete();
+
+        DB::commit();
+
+        // Log sukses
+        Log::info('DS Successfully Deleted', [
+            'ds_number' => $ds_number,
+            'deleted_by'=> Auth::user()->name ?? 'Unknown',
+            'reason'    => $request->reason
+        ]);
+
+        return redirect()->back()->with('success', "DS $ds_number berhasil dihapus dari kedua tabel");
+
     } catch (\Exception $e) {
-        // Log error untuk debugging
+        DB::rollBack();
+
         Log::error('DS Delete Error', [
             'ds_number' => $ds_number,
-            'error' => $e->getMessage(),
-            'user_id' => Auth::id(),
-            'trace' => $e->getTraceAsString()
+            'error'     => $e->getMessage(),
+            'user_id'   => Auth::id(),
+            'trace'     => $e->getTraceAsString()
         ]);
-        
+
         return redirect()->back()->with('error', 'Gagal menghapus DS: ' . $e->getMessage());
     }
 }
+
 
     // ✅ Export PDF
    public function exportPdf(Request $request)
