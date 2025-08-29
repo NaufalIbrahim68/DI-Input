@@ -33,8 +33,8 @@ class DsInputExport implements FromCollection, WithHeadings
             'di_received_date_string',
             'di_received_time',
             'qty',
-            'qty_delivery',
             'qty_prep',
+            'qty_agv',
             'dn_number'
         ]);
 
@@ -49,8 +49,8 @@ class DsInputExport implements FromCollection, WithHeadings
                                                 : '-',
                 'di_received_time'        => $item->di_received_time ?? '-',
                 'qty'                     => $item->qty,
-                'qty_delivery'            => ($item->qty_delivery ?? 0) > 0 ? $item->qty_delivery : '',
                 'qty_prep'                => ($item->qty_prep ?? 0) > 0 ? $item->qty_prep : '',
+                'qty_agv'            => ($item->qty_agv ?? 0) > 0 ? $item->qty_agv : '',
                 'dn_number'               => ($item->dn_number ?? 0) > 0 ? $item->dn_number : '',
             ];
         });
@@ -66,8 +66,8 @@ class DsInputExport implements FromCollection, WithHeadings
             'Received Date',
             'Received Time',
             'Qty',
-            'Qty Delivery',
             'Qty Prep',
+            'Qty Delivery',
             'DN Number',
         ];
     }

@@ -62,22 +62,27 @@ public function index(Request $request)
 {
     $ds = DsInput::where('ds_number', $ds_number)->firstOrFail();
 
-    // Validasi hanya untuk qty_delivery dan dn_number
+    // Validasi hanya untuk qty_agv dan dn_number
     $request->validate([
-        'qty_delivery' => 'nullable|integer|min:0',
+        'qty_agv' => 'nullable|integer|min:0',
         'dn_number' => 'nullable|string|max:50',
     ]);
 
-    // Update hanya kedua kolom ini
+    // Update kedua kolom ini
     $ds->update([
-        'qty_delivery' => $request->qty_delivery ?: null,
+        'qty_agv'  => $request->qty_agv ?: null,
         'dn_number' => $request->dn_number ?: null,
     ]);
+
+    // Update flag_agv otomatis
+    $ds->flag_agv = ($ds->qty_agv == $ds->qty && $ds->qty > 0) ? 1 : 0;
+    $ds->save();
 
     return redirect()
         ->route('ds_input.index', $request->only(['tanggal','page']))
         ->with('success', "Data DS {$ds_number} berhasil diperbarui.");
 }
+
 
 
     // ✅ Hapus DS

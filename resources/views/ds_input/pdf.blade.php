@@ -28,8 +28,8 @@
                 <th>Received Date</th>
                 <th>Received Time</th>
                 <th>Qty</th>
-                <th>Qty Delivery</th>
                 <th>Qty Prep</th>
+                <th>Qty Delivery</th>
                 <th>DN Number</th>
             </tr>
         </thead>
@@ -45,11 +45,12 @@
                         : '-' }}</td>
                     <td>{{ $ds->di_received_time ?? '-' }}</td>  
                     <td>{{ $ds->qty }}</td>
-                    <td class="text-black">
-    {{ ($ds->qty_delivery ?? 0) > 0 ? $ds->qty_delivery : '' }}
-</td>
+                    
                    <td class="text-black">
     {{ ($ds->qty_prep ?? 0) > 0 ? $ds->qty_prep : '' }}
+</td>
+<td class="text-black">
+    {{ ($ds->qty_agv ?? 0) > 0 ? $ds->qty_agv : '' }}
 </td>
                     <td class="text-black">
     {{ ($ds->dn_number ?? 0) > 0 ? $ds->dn_number : '' }}

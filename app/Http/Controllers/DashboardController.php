@@ -89,10 +89,10 @@ $completed = 0;
 $partial = 0;
 
 foreach ($dsInputs as $ds) {
-    $qtyDelivery = (int) ($ds->qty_delivery ?? 0);
-    $qtyDs = (int) ($ds->qty ?? 0);
+    $qtyAgv = (int) ($ds->qty_agv ?? 0);
+    $qtyDs  = (int) ($ds->qty ?? 0);
 
-    if ($qtyDelivery == $qtyDs && $qtyDs > 0) {
+    if ($qtyAgv == $qtyDs && $qtyDs > 0) {
         $completed++;
     } else {
         $partial++;
@@ -104,7 +104,7 @@ $statusData = [
     'partial'   => $partial,
 ];
 
-        return view('dashboard', [
+return view('dashboard', [
     'timeline' => $timeline,
     'chartLabels' => $groupedChartData->first()['labels'] ?? [],
     'chartData' => $groupedChartData->first()['data'] ?? [],

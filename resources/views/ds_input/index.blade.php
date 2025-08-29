@@ -97,14 +97,14 @@
                        <td class="text-black">
     {{ ($ds->qty_prep ?? 0) > 0 ? $ds->qty_prep : '' }}
 </td>
-                       <td class="text-black">
+                      <td class="text-black">
     @php
         $qtyDI   = (int) ($ds->qty ?? 0);
         $qtyPrep = (int) ($ds->qty_prep ?? 0);
 
         if ($qtyPrep < $qtyDI) {
             $statusPrep = $qtyPrep - $qtyDI; // negatif
-        } elseif ($qtyPrep == $qtyDI) {
+        } elseif ($ds->flag_prep == 1) {
             $statusPrep = 'Completed';
         } else { // qtyPrep > qtyDI
             $statusPrep = 'Over';
@@ -119,21 +119,18 @@
         <span class="badge bg-warning text-white">{{ $statusPrep }}</span>
     @endif
 </td>
-                        <td>
-                            <input type="number" name="qty_delivery" value="{{ $ds->qty_delivery ?? '' }}" 
-                                   class="form-control form-control-sm text-center qty-delivery-input" 
-                                   data-ds-number="{{ $ds->ds_number }}">
-                        </td>
-                       <td>
+          <td>
+    <input type="number" name="qty_agv" 
+           value="{{ $ds->qty_agv > 0 ? $ds->qty_agv : '' }}" 
+           class="form-control form-control-sm text-center qty-delivery-input" 
+           data-ds-number="{{ $ds->ds_number }}">
+</td>
+                    <td>
     @php
         $qtyDelivery = (int) ($ds->qty_delivery ?? 0); 
-        $qtyDs = (int) ($ds->qty ?? 0);               
+        $qtyDs = (int) ($ds->qty ?? 0);
 
-        if ($qtyDelivery == $qtyDs && $qtyDs > 0) {
-            $status = 'completed';
-        } else {
-            $status = 'partial';
-        }
+        $status = ($ds->flag_agv == 1) ? 'completed' : 'partial';
     @endphp
 
     <span class="status-badge" data-ds-number="{{ $ds->ds_number }}">
@@ -222,7 +219,7 @@
             <form id="updateForm_{{ $ds->ds_number }}" action="{{ route('ds_input.update', $ds->ds_number) }}" method="POST">
                 @csrf
                 @method('PUT')
-                <input type="hidden" name="qty_delivery" id="hiddenQtyDelivery_{{ $ds->ds_number }}">
+                <input type="hidden" name="qty_agv" id="hiddenQtyAgv_{{ $ds->ds_number }}">
                 <input type="hidden" name="dn_number" id="hiddenDnNumber_{{ $ds->ds_number }}">
             </form>
         @endforeach
@@ -284,22 +281,22 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded...');
 
     // Initialize save buttons
-    const saveButtons = document.querySelectorAll('.btn-save-ds');
-    
-    saveButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const dsNumber = this.getAttribute('data-ds-number');
-            const qtyDeliveryInput = document.querySelector(`input[name="qty_delivery"][data-ds-number="${dsNumber}"]`);
-            const dnNumberInput = document.querySelector(`input[name="dn_number"][data-ds-number="${dsNumber}"]`);
-            
-            // Set values in hidden form
-            document.getElementById(`hiddenQtyDelivery_${dsNumber}`).value = qtyDeliveryInput.value;
-            document.getElementById(`hiddenDnNumber_${dsNumber}`).value = dnNumberInput.value;
-            
-            // Submit form
-            document.getElementById(`updateForm_${dsNumber}`).submit();
-        });
+   const saveButtons = document.querySelectorAll('.btn-save-ds');
+
+saveButtons.forEach(button => {
+    button.addEventListener('click', function() {
+        const dsNumber = this.getAttribute('data-ds-number');
+        const qtyAgvInput = document.querySelector(`input[name="qty_agv"][data-ds-number="${dsNumber}"]`);
+        const dnNumberInput = document.querySelector(`input[name="dn_number"][data-ds-number="${dsNumber}"]`);
+
+        // Set values in hidden form
+        document.getElementById(`hiddenQtyAgv_${dsNumber}`).value = qtyAgvInput.value;
+        document.getElementById(`hiddenDnNumber_${dsNumber}`).value = dnNumberInput.value;
+
+        // Submit form
+        document.getElementById(`updateForm_${dsNumber}`).submit();
     });
+});
 
     // Handle form submission validation
     if (formDelete) {
