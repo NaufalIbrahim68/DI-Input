@@ -166,15 +166,22 @@ public function index(Request $request)
 
     if ($tanggal) {
         $query->whereDate('di_received_date_string', $tanggal);
+    } else {
+        // kalau tidak ada input, pakai tanggal hari ini
+        $tanggal = now()->format('Y-m-d');
     }
 
     $dsInputs = $query->orderBy('ds_number')->get();
 
-    $pdf = Pdf::loadView('Ds_Input.pdf', compact('dsInputs'))
+    $pdf = Pdf::loadView('Ds_Input.pdf', [
+            'dsInputs' => $dsInputs,
+            'tanggal'  => $tanggal, // <--- ini penting
+        ])
         ->setPaper('a4', 'landscape');
 
     return $pdf->download('ds_input.pdf');
 }
+
 
 // Export Excel
 public function exportExcel(Request $request)

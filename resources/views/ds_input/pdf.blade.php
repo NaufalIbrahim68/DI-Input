@@ -12,11 +12,11 @@
 <body>
 
     <h3 style="text-align: center;">
-        Data DS
-        @if(!empty($tanggal))
-            {{ \Carbon\Carbon::parse($tanggal)->format('d-m-Y') }}
-        @endif
-    </h3>
+    Data DS
+    @if(!empty($tanggal))
+        {{ \Carbon\Carbon::make($tanggal)->format('d-m-Y') }}
+    @endif
+</h3>
 
     <table>
         <thead>
