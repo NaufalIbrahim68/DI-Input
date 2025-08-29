@@ -21,19 +21,27 @@ class DsInputController extends Controller
    
 public function index(Request $request)
 {
+    $selectedDate = $request->input('tanggal');
+
     $query = DsInput::query();
 
-    // filter tanggal kalau ada
-    if ($request->filled('tanggal')) {
-        // pastikan format tanggal sama dengan kolom di DB
-        $query->whereDate('di_received_date_string', $request->tanggal);
+    if ($selectedDate) {
+        $query->whereDate('di_received_date_string', $selectedDate);
     }
 
-    // urutkan berdasarkan ds_number atau created_at
-    $dsInputs = $query->orderBy('ds_number')->get();
+    $dsInputs = $query->orderBy('ds_number')
+        ->paginate(10)
+        ->withQueryString(); // ⬅ penting biar query ?tanggal ikut di pagination
 
-    return view('ds_input.index', compact('dsInputs'));
+    $total = $query->count();
+
+    return view('ds_input.index', compact('dsInputs', 'selectedDate', 'total'));
 }
+
+
+
+
+
     // ✅ Import DS dari Excel
     public function import(Request $request)
     {

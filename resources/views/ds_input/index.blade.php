@@ -3,11 +3,7 @@
 @section('content')
     <div class="container-fluid">
 
-        <link rel="stylesheet" href="https://cdn.datatables.net/2.3.2/css/dataTables.bootstrap5.min.css">
-        <link rel="stylesheet" href="https://cdn.datatables.net/responsive/3.0.3/css/responsive.bootstrap5.min.css">
-        <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.bootstrap5.min.css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
+       
         @php
             $selectedDate = request('tanggal');
         @endphp
@@ -42,13 +38,13 @@
             </form>
         </div>
 
-        @if(!empty($selectedDate))
-            <div class="alert alert-info text-center">
-                Menampilkan data DS untuk tanggal
-                <strong>{{ \Carbon\Carbon::parse($selectedDate)->translatedFormat('d F Y') }}</strong>
-                - Ditemukan <strong>{{ $dsInputs->count() }}</strong> data
-            </div>
-        @endif
+    @if(!empty($selectedDate))
+    <div class="alert alert-info text-center">
+        Menampilkan data DS untuk tanggal 
+        <strong>{{ \Carbon\Carbon::parse($selectedDate)->translatedFormat('d F Y') }}</strong>,
+        total <strong>{{ $total }}</strong> data
+    </div>
+@endif
 
         <div class="d-flex gap-2 mb-3">
             <a href="{{ route('ds_input.export.pdf', ['tanggal' => request('tanggal')]) }}" class="btn btn-danger btn-sm">
@@ -61,7 +57,7 @@
         </div>
 
         <div class="table-responsive" style="overflow-x:auto; width:100%;">
-            <table id="example" class="table table-bordered table-sm bg-white small">
+            <table class="table table-bordered table-sm bg-white small">
                 <thead class="bg-black text-white">
                     <tr>
                         <th>No</th>
@@ -84,7 +80,7 @@
                     @if($dsInputs && $dsInputs->count() > 0)
                         @foreach ($dsInputs as $index => $ds)
                                 <tr data-ds-number="{{ $ds->ds_number }}">
-                                    <td class="text-black">{{ $index + 1 }}</td>
+                                   <td class="text-black">{{ $dsInputs->firstItem() + $index }}</td>
                                     <td class="text-black">{{ $ds->ds_number ?? '-' }}</td>
                                     <td class="text-black">{{ $ds->gate ?? '-' }}</td>
                                     <td class="text-black">{{ $ds->di_type ?? '-' }}</td>
@@ -178,6 +174,11 @@
                 </tbody>
             </table>
         </div>
+
+       {{-- Pagination --}}
+<div class="d-flex justify-content-center mt-3">
+    {{ $dsInputs->onEachSide(2)->withQueryString()->links('pagination::bootstrap-5') }}
+</div>
 
         {{--Modal Delete--}}
         <div id="deleteModal" class="custom-modal" style="display: none;">
@@ -516,32 +517,7 @@
                 box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
             }
         </style>
-        <!-- jQuery & DataTables -->
-        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-        <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
-        <script>
-            $(document).ready(function () {
-                $('#example').DataTable({
-                    "pageLength": 10,
-                    "responsive": true,
-                    "scrollX": true,
-                    "searching": false,
-                    "lengthChange": true,
-                    "columnDefs": [
-                        { "width": "20px", "targets": 0 },
-                        { "width": "150px", "targets": 1 },
-                        { "width": "100px", "targets": 2 },
-                        { "width": "120px", "targets": 3 },
-                        { "width": "180px", "targets": 4 },
-                        { "width": "120px", "targets": 5 },
-                        { "width": "100px", "targets": 6 },
-                        { "width": "120px", "targets": 7 },
-                        { "width": "120px", "targets": 8 },
-                        { "width": "80px", "targets": 9 },
-                    ]
-                });
-            });
-        </script>
-
+       
+      
     </div>
 @endsection
