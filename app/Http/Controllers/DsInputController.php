@@ -29,11 +29,13 @@ public function index(Request $request)
         $query->whereDate('di_received_date_string', $selectedDate);
     }
 
+    // Hitung total sebelum paginate
+    $total = $query->count();
+
+    // Baru lakukan paginate (query clone biar tidak "terpotong")
     $dsInputs = $query->orderBy('ds_number')
         ->paginate(10)
-        ->withQueryString(); // ⬅ penting biar query ?tanggal ikut di pagination
-
-    $total = $query->count();
+        ->withQueryString(); // ⬅ biar ?tanggal tetap ada di link pagination
 
     return view('ds_input.index', compact('dsInputs', 'selectedDate', 'total'));
 }
