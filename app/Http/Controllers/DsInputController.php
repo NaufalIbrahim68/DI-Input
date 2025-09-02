@@ -40,10 +40,6 @@ public function index(Request $request)
     return view('ds_input.index', compact('dsInputs', 'selectedDate', 'total'));
 }
 
-
-
-
-
     // ✅ Import DS dari Excel
     public function import(Request $request)
     {
@@ -176,7 +172,7 @@ public function destroy($ds_number, Request $request)
 
 
     // ✅ Export PDF
-   public function exportPdf(Request $request)
+  public function exportPdf(Request $request)
 {
     $tanggal = $request->input('tanggal'); // ambil dari query string ?tanggal=YYYY-MM-DD
 
@@ -186,19 +182,27 @@ public function destroy($ds_number, Request $request)
         $query->whereDate('di_received_date_string', $tanggal);
     } else {
         // kalau tidak ada input, pakai tanggal hari ini
-        $tanggal = now()->format('Y-m-d');
+        $tanggal = null;
     }
 
     $dsInputs = $query->orderBy('ds_number')->get();
 
     $pdf = Pdf::loadView('Ds_Input.pdf', [
             'dsInputs' => $dsInputs,
-            'tanggal'  => $tanggal, // <--- ini penting
+            'tanggal'  => $tanggal,
         ])
         ->setPaper('a4', 'landscape');
 
-    return $pdf->download('ds_input.pdf');
+    // bikin nama file sesuai kondisi tanggal
+    if ($tanggal) {
+        $filename = 'ds_input_' . Carbon::parse($tanggal)->format('d-m-Y') . '.pdf';
+    } else {
+        $filename = 'ds_input.pdf';
+    }
+
+    return $pdf->download($filename);
 }
+
 
 
 // Export Excel
@@ -206,8 +210,14 @@ public function exportExcel(Request $request)
 {
     $tanggal = $request->input('tanggal'); // ambil dari query string
 
-    return Excel::download(new DsInputExport($tanggal), 'ds_input.xlsx');
+    // Tentukan nama file
+    $filename = $tanggal
+        ? 'ds_input_' . Carbon::parse($tanggal)->format('d-m-Y') . '.xlsx'
+        : 'ds_input.xlsx';
+
+    return Excel::download(new DsInputExport($tanggal), $filename);
 }
+
 public function generate(Request $request)
 {
     // Validasi input tanggal

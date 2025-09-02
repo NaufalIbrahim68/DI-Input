@@ -29,13 +29,15 @@
 
 <body>
 
-    <h3 style="text-align: center;">
-        Data DS
-        @if(!empty($tanggal))
-            {{ \Carbon\Carbon::make($tanggal)->format('d-m-Y') }}
-        @endif
-    </h3>
+ <h2 style="text-align: center;">
+    Data DS(Delivery Section)
+</h2>
 
+@if(!empty($tanggal))
+    <p style="text-align: center; font-size: 16px; margin-top: 5px;">
+        {{ \Carbon\Carbon::make($tanggal)->translatedFormat('d F Y') }}
+    </p>
+@endif
     <table>
         <thead>
             <tr>
