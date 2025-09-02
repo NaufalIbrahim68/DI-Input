@@ -75,12 +75,8 @@ class DashboardController extends Controller
             ->reverse()
             ->values();
 
-        // ==========================
-        // Data status preparation 7 hari terakhir
-        // ==========================
-       // ==========================
-// Data status preparation 7 hari terakhir (berdasarkan qty_delivery vs qty)
-// ==========================
+       
+
 $sevenDaysAgo = Carbon::now()->subDays(7)->format('Y-m-d');
 
 $dsInputs = DsInput::where('di_received_date_string', '>=', $sevenDaysAgo)->get();

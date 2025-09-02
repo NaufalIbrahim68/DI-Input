@@ -120,23 +120,25 @@
                                     <td>
                                         <input type="number" name="qty_agv" value="{{ $ds->qty_agv > 0 ? $ds->qty_agv : '' }}"
                                             class="form-control form-control-sm text-center qty-delivery-input"
-                                            data-ds-number="{{ $ds->ds_number }}">
+                                            data-ds-number="{{ $ds->ds_number }}"
+                                             style="max-width: 80px;">
+                                            
                                     </td>
                                     <td>
-                                        @php
-                                            $qtyDelivery = (int) ($ds->qty_delivery ?? 0);
-                                            $qtyDs = (int) ($ds->qty ?? 0);
+                                      @php
+    $qtyAgv = (int) ($ds->qty_agv ?? 0);
+    $qtyDs = (int) ($ds->qty ?? 0);
 
-                                            $status = ($ds->flag_agv == 1) ? 'completed' : 'partial';
-                                        @endphp
+    $status = ($ds->flag_agv == 1) ? 'completed' : 'partial';
+@endphp
 
-                                        <span class="status-badge" data-ds-number="{{ $ds->ds_number }}">
-                                            @if($status === 'completed')
-                                                <span class="badge bg-success text-white">Completed</span>
-                                            @else
-                                                <span class="badge bg-warning text-white">Partial</span>
-                                            @endif
-                                        </span>
+<span class="status-badge" data-ds-number="{{ $ds->ds_number }}">
+    @if($status === 'completed')
+        <span class="badge bg-success text-white">Completed</span>
+    @else
+        <span class="badge bg-warning text-white">Partial</span>
+    @endif
+</span>
                                     </td>
 
                                     <td>
@@ -215,20 +217,26 @@
             </div>
         </div>
 
-        {{-- Hidden forms untuk submit data --}}
-        <div id="hiddenForms" style="display: none;">
-            @if($dsInputs && $dsInputs->count() > 0)
-                @foreach ($dsInputs as $ds)
-                    <form id="updateForm_{{ $ds->ds_number }}" action="{{ route('ds_input.update', $ds->ds_number) }}"
-                        method="POST">
-                        @csrf
-                        @method('PUT')
-                        <input type="hidden" name="qty_agv" id="hiddenQtyAgv_{{ $ds->ds_number }}">
-                        <input type="hidden" name="dn_number" id="hiddenDnNumber_{{ $ds->ds_number }}">
-                    </form>
-                @endforeach
-            @endif
-        </div>
+      {{-- Hidden forms untuk submit data --}}
+<div id="hiddenForms" style="display: none;">
+    @if($dsInputs && $dsInputs->count() > 0)
+        @foreach ($dsInputs as $ds)
+            <form id="updateForm_{{ $ds->ds_number }}" action="{{ route('ds_input.update', $ds->ds_number) }}"
+                method="POST">
+                @csrf
+                @method('PUT')
+
+                <input type="hidden" name="qty_agv" id="hiddenQtyAgv_{{ $ds->ds_number }}">
+                <input type="hidden" name="dn_number" id="hiddenDnNumber_{{ $ds->ds_number }}">
+
+                {{-- Tambahan supaya setelah update tetap di halaman & tanggal yang sama --}}
+                <input type="hidden" name="page" value="{{ request('page', 1) }}">
+                <input type="hidden" name="tanggal" value="{{ request('tanggal') }}">
+            </form>
+        @endforeach
+    @endif
+</div>
+
 
         <script>
             function openDeleteModal(dsNumber, deleteUrl) {
