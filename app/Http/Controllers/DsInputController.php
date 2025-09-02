@@ -94,16 +94,11 @@ public function index(Request $request)
     // ✅ Hapus DS
 public function destroy($ds_number, Request $request)
 {
-    // 1. Validasi input
     $request->validate([
         'password' => 'required',
         'reason'   => 'required|min:5'
-    ], [
-        'password.required' => 'Password wajib diisi',
-        'reason.required'   => 'Alasan hapus wajib diisi',
-        'reason.min'        => 'Alasan hapus minimal 5 karakter'
     ]);
-    
+
     $specialPassword = env('DS_DELETE_PASSWORD');
 
     if ($request->password !== $specialPassword) {
@@ -115,19 +110,17 @@ public function destroy($ds_number, Request $request)
     try {
         DB::beginTransaction();
 
-        // Cek apakah DS ada
-        $dsExists = DB::table('ds_input')
-            ->where('ds_number', $ds_number)
-            ->exists();
+        // Cari data DS berdasarkan ds_number
+        $ds = DB::table('ds_input')->where('ds_number', $ds_number)->first();
 
-        if (!$dsExists) {
+        if (!$ds) {
             DB::rollBack();
             return redirect()->back()->with('error', 'DS tidak ditemukan');
         }
 
         // Log attempt
         Log::info('DS Delete Attempt', [
-            'ds_number' => $ds_number,
+            'ds_number' => $ds->ds_number,
             'deleted_by' => Auth::user()->name ?? 'Unknown',
             'user_id'   => Auth::id(),
             'reason'    => $request->reason,
@@ -135,40 +128,24 @@ public function destroy($ds_number, Request $request)
             'ip_address'=> $request->ip()
         ]);
 
-        // 2. Hapus dari ds_input
-        DB::table('ds_input')
-            ->where('ds_number', $ds_number)
-            ->delete();
+        // Hapus dari ds_input
+        DB::table('ds_input')->where('ds_number', $ds_number)->delete();
 
-        // 3. Hapus juga dari di_input
-        DB::table('di_input')
-            ->where('ds_number', $ds_number)
-            ->delete();
+        // Hapus juga di di_input berdasarkan relasi di_id
+        if ($ds->di_id) {
+            DB::table('di_input')->where('id', $ds->di_id)->delete();
+        }
 
         DB::commit();
 
-        // Log sukses
-        Log::info('DS Successfully Deleted', [
-            'ds_number' => $ds_number,
-            'deleted_by'=> Auth::user()->name ?? 'Unknown',
-            'reason'    => $request->reason
-        ]);
-
-        return redirect()->back()->with('success', "DS $ds_number berhasil dihapus dari kedua tabel");
+        return redirect()->back()->with('success', "DS {$ds->ds_number} berhasil dihapus");
 
     } catch (\Exception $e) {
         DB::rollBack();
-
-        Log::error('DS Delete Error', [
-            'ds_number' => $ds_number,
-            'error'     => $e->getMessage(),
-            'user_id'   => Auth::id(),
-            'trace'     => $e->getTraceAsString()
-        ]);
-
         return redirect()->back()->with('error', 'Gagal menghapus DS: ' . $e->getMessage());
     }
 }
+
 
 
     // ✅ Export PDF
@@ -239,7 +216,7 @@ public function generate(Request $request)
                 ->with('error', 'Tidak ada data DI pada tanggal tersebut.');
         }
 
-        // Gabungkan DI yang sama berdasarkan kombinasi unik: gate, di_type, supplier_part_number, received date & time
+        // Gabungkan DI yang sama berdasarkan kombinasi unik
         $grouped = $diData->groupBy(function ($item) {
             return $item->gate . '|' .
                    $item->di_type . '|' .
@@ -251,14 +228,15 @@ public function generate(Request $request)
         // Merge duplikat dengan menjumlahkan qty
         $merged = $grouped->map(function ($group) {
             $first = $group->first();
-            $first->qty = $group->sum('qty'); // jumlahkan qty jika ada duplikat
+            $first->qty = $group->sum('qty');
+            $first->di_ids = $group->pluck('id')->toArray(); // simpan semua id DI yg tergabung
             return $first;
         });
 
         // Urutkan berdasarkan gate alfabetis
         $sorted = $merged->sortBy('gate')->values();
 
-        // Ambil DS terakhir untuk tanggal tersebut, untuk generate nomor berikutnya
+        // Ambil DS terakhir untuk tanggal tersebut
         $prefix = Carbon::parse($date)->format('dmy');
         $last = DsInput::where('ds_number', 'like', "DS-$prefix-%")
             ->orderBy('ds_number', 'desc')
@@ -279,8 +257,8 @@ public function generate(Request $request)
             // Buat nomor DS baru
             $dsNumber = "DS-$prefix-" . str_pad($counter++, 4, '0', STR_PAD_LEFT);
 
-            // Simpan ke tabel DS
-            DsInput::create([
+            // Simpan ke tabel DS (relasi ke DI via di_id)
+            $ds = DsInput::create([
                 'ds_number'               => $dsNumber,
                 'gate'                    => $di->gate ?? '-',
                 'supplier_part_number'    => $di->supplier_part_number,
@@ -291,12 +269,20 @@ public function generate(Request $request)
                 'di_received_time'        => $di->di_received_time ?? null,
                 'flag_prep'               => $di->flag_prep ?? 0,
                 'flag_record'             => $di->flag_record ?? 0,
+                'di_id'                   => $di->id, // ambil id DI yg pertama
             ]);
+
+            // Kalau kamu mau semua DI id yang tergabung, bisa bikin tabel pivot ds_di_relations
+            // foreach ($di->di_ids as $diId) {
+            //     DsDiRelation::create([
+            //         'ds_id' => $ds->id,
+            //         'di_id' => $diId,
+            //     ]);
+            // }
         }
 
         DB::commit();
 
-        // Redirect dengan pesan sukses
         return redirect()
             ->route('ds_input.generatePage', ['generate_date' => $date])
             ->with('success', 'Generate DS selesai.');
