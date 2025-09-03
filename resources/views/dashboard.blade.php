@@ -89,7 +89,7 @@
       @endif
     <div id="timeline-table" class="w-full">
   <div class="overflow-x-auto">
-    <table class="min-w-full table-auto border-collapse">
+    <table class="min-w-full border-collapse text-xs md:text-sm">
           <thead>
             <tr class="bg-dark-100 text-left">
               <th class="border p-2 bg-black text-white">Tanggal</th>
