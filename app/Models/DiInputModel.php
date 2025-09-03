@@ -39,10 +39,12 @@ class DiInputModel extends Model
     ];
 
     // Relasi balik ke DS
-    public function ds()
-    {
-        return $this->belongsTo(DsInput::class, 'supplier_part_number', 'supplier_part_number');
-    }
+   // Relasi: DI hasMany DS (satu DI bisa punya banyak DS)
+public function ds()
+{
+    return $this->hasMany(DsInput::class, 'di_id', 'id');
+}
+
 
     // Optional helper format tanggal
     public function getDiReceivedDateStringAttribute($value)

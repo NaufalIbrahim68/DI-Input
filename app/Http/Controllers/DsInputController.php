@@ -99,7 +99,7 @@ public function destroy($ds_number, Request $request)
         'reason'   => 'required|min:5'
     ]);
 
-    $specialPassword = env('DS_DELETE_PASSWORD');
+    $specialPassword = config('custom.ds_delete_password');
 
     if ($request->password !== $specialPassword) {
         return redirect()->back()
@@ -110,7 +110,7 @@ public function destroy($ds_number, Request $request)
     try {
         DB::beginTransaction();
 
-        // Cari data DS berdasarkan ds_number
+        // Ambil DS
         $ds = DB::table('ds_input')->where('ds_number', $ds_number)->first();
 
         if (!$ds) {
@@ -118,7 +118,7 @@ public function destroy($ds_number, Request $request)
             return redirect()->back()->with('error', 'DS tidak ditemukan');
         }
 
-        // Log attempt
+        // Catat log penghapusan
         Log::info('DS Delete Attempt', [
             'ds_number' => $ds->ds_number,
             'deleted_by' => Auth::user()->name ?? 'Unknown',
@@ -128,10 +128,10 @@ public function destroy($ds_number, Request $request)
             'ip_address'=> $request->ip()
         ]);
 
-        // Hapus dari ds_input
+        // Hapus DS
         DB::table('ds_input')->where('ds_number', $ds_number)->delete();
 
-        // Hapus juga di di_input berdasarkan relasi di_id
+        // Hapus DI yang terkait (langsung saja tanpa cek dipakai DS lain)
         if ($ds->di_id) {
             DB::table('di_input')->where('id', $ds->di_id)->delete();
         }
@@ -145,6 +145,9 @@ public function destroy($ds_number, Request $request)
         return redirect()->back()->with('error', 'Gagal menghapus DS: ' . $e->getMessage());
     }
 }
+
+
+
 
 
 

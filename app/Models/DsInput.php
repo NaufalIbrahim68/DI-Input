@@ -17,19 +17,20 @@ class DsInput extends Model
 
     protected $fillable = [
         'ds_number',
-        'gate',
-        'di_type',
-        'supplier_part_number',
-          'di_received_date_string',
-          'di_received_time',
-        'qty',
-        'qty_prep', 
-        'flag_prep',
-        'qty_agv',
-        'flag_agv',
-        'dn_number',     
-        'created_at',
-        'updated_at'
+    'gate',
+    'supplier_part_number',
+    'qty',
+    'di_type',
+    'di_received_date_string',
+    'di_received_time',
+    'qty_prep',
+    'flag_prep',
+    'qty_agv',
+    'flag_agv',
+    'dn_number',
+    'di_id',   
+    'created_at',
+    'updated_at'
     ];
 
     public $timestamps = true;
@@ -41,11 +42,10 @@ class DsInput extends Model
     }
 
     // Relasi: DS terkait ke banyak DI berdasarkan supplier_part_number
-    public function di()
-    {
-        return $this->hasMany(DiInputModel::class, 'supplier_part_number', 'supplier_part_number');
-    }
-
+   public function di()
+{
+    return $this->belongsTo(DiInputModel::class, 'di_id', 'id');
+}
     // Optional: helper format tanggal
     public function getFormattedReceivedDateAttribute()
     {
