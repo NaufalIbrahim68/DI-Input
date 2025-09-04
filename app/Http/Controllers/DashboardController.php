@@ -21,7 +21,7 @@ class DashboardController extends Controller
         }
 
         // ==========================
-        // Query utama (untuk timeline & total qty)
+        // Query untuk timeline & total qty
         // ==========================
         $baseQuery = DiInputModel::query();
 
@@ -107,7 +107,7 @@ return view('dashboard', [
     'groupedChartData' => $groupedChartData,
     'totalQty' => $totalQty,
     'isFiltered' => $isFiltered,
-    'statusData' => $statusData, // sekarang pakai completed/partial
+    'statusData' => $statusData, 
 ]);
     }
 }

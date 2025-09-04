@@ -37,8 +37,8 @@ class User extends Authenticatable
      * Override kolom identifier untuk Auth
      * supaya login pakai 'npk' bukan 'id'
      */
-    public function getAuthIdentifierName()
-    {
-        return 'npk';
-    }
+   public function username()
+{
+    return 'npk';
+}
 }
