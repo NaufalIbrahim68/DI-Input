@@ -70,7 +70,13 @@ Route::prefix('ds-input')->name('ds_input.')->group(function () {
     // Generate DS
     // ===============================
     Route::get('/generate', [DsInputController::class, 'generateForm'])->name('generatePage'); 
-    Route::post('/generate', [DsInputController::class, 'generate'])->name('generate');       
+    Route::post('/generate', [DsInputController::class, 'generate'])->name('generate'); 
+    
+    // ===============================
+// Regenerate DS
+// ===============================
+Route::post('/regenerate', [DsInputController::class, 'regenerate'])->name('regenerate');
+
 
     // ===============================
     // Import DS

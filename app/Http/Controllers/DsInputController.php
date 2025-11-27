@@ -210,7 +210,6 @@ public function generate(Request $request)
     try {
         DB::beginTransaction();
 
-        // Ambil semua DI (Delivery Instruction) untuk tanggal tersebut
         $diData = DiInputModel::whereDate('di_received_date_string', $date)->get();
 
         if ($diData->isEmpty()) {
@@ -219,7 +218,6 @@ public function generate(Request $request)
                 ->with('error', 'Tidak ada data DI pada tanggal tersebut.');
         }
 
-        // Gabungkan DI yang sama berdasarkan kombinasi unik
         $grouped = $diData->groupBy(function ($item) {
             return $item->gate . '|' .
                    $item->di_type . '|' .
@@ -272,16 +270,10 @@ public function generate(Request $request)
                 'di_received_time'        => $di->di_received_time ?? null,
                 'flag_prep'               => $di->flag_prep ?? 0,
                 'flag_record'             => $di->flag_record ?? 0,
-                'di_id'                   => $di->id, // ambil id DI yg pertama
+                'di_id'                   => $di->id, 
             ]);
 
-            // Kalau kamu mau semua DI id yang tergabung, bisa bikin tabel pivot ds_di_relations
-            // foreach ($di->di_ids as $diId) {
-            //     DsDiRelation::create([
-            //         'ds_id' => $ds->id,
-            //         'di_id' => $diId,
-            //     ]);
-            // }
+           
         }
 
         DB::commit();
@@ -315,5 +307,105 @@ public function generateForm(Request $request)
         'generateDate' => $request->generate_date ?? null
     ]);
 }
+
+public function regenerate(Request $request)
+{
+    $request->validate([
+        'generate_date' => 'required|date',
+    ]);
+
+    $date = $request->generate_date;
+
+    try {
+        DB::beginTransaction();
+
+        // Ambil semua DI pada tanggal itu
+        $diData = DiInputModel::whereDate('di_received_date_string', $date)->get();
+
+        if ($diData->isEmpty()) {
+            return redirect()->route('ds_input.generatePage', ['generate_date' => $date])
+                             ->with('error', 'Tidak ada data DI pada tanggal tersebut.');
+        }
+
+        // Grouping DI (kombinasi yang dianggap identitas satu DS)
+        $grouped = $diData->groupBy(function ($item) {
+            return $item->gate . '|' .
+                   $item->di_type . '|' .
+                   $item->supplier_part_number . '|' .
+                   $item->di_received_date_string . '|' .
+                   $item->di_received_time;
+        });
+
+        // Hitung prefix + ambil last counter agar DS baru berlanjut dari yang terakhir
+        $prefix = Carbon::parse($date)->format('dmy');
+        $last = DsInput::where('ds_number', 'like', "DS-$prefix-%")
+                       ->orderBy('ds_number', 'desc')
+                       ->first();
+
+        $counter = $last ? intval(substr($last->ds_number, -4)) + 1 : 1;
+
+        // Proses tiap grup
+        foreach ($grouped as $key => $group) {
+            // parse kembali komponen dari key (atau ambil dari first item)
+            $first = $group->first();
+            $gate = $first->gate;
+            $di_type = $first->di_type;
+            $supplier_part_number = $first->supplier_part_number;
+            $di_received_date_string = $first->di_received_date_string;
+            $di_received_time = $first->di_received_time;
+
+            // total qty untuk grup ini (recompute dari semua DI yang cocok)
+            $totalQty = $group->sum('qty');
+
+            // cari apakah sudah ada DS untuk kombinasi ini
+            $existingDs = DsInput::where('gate', $gate)
+                ->where('di_type', $di_type)
+                ->where('supplier_part_number', $supplier_part_number)
+                ->where('di_received_date_string', $di_received_date_string)
+                ->where('di_received_time', $di_received_time)
+                ->first();
+
+            if ($existingDs) {
+                // Update qty DS agar merefleksikan semua DI yang sekarang ada
+                $existingDs->qty = $totalQty;
+
+                // opsional: update di_id ke latest DI id atau null
+                // $existingDs->di_id = $group->pluck('id')->last(); // pilih policy
+                $existingDs->save();
+            } else {
+                // Tidak ada DS => buat DS baru (muncul paling baru karena counter meningkat)
+                $dsNumber = "DS-$prefix-" . str_pad($counter++, 4, '0', STR_PAD_LEFT);
+
+                DsInput::create([
+                    'ds_number'               => $dsNumber,
+                    'gate'                    => $gate ?? '-',
+                    'supplier_part_number'    => $supplier_part_number,
+                    'qty'                     => $totalQty,
+                    'di_type'                 => $di_type ?? null,
+                    'di_status'               => $first->di_status ?? null,
+                    'di_received_date_string' => $di_received_date_string ?? $date,
+                    'di_received_time'        => $di_received_time ?? null,
+                    'flag_prep'               => $first->flag_prep ?? 0,
+                    'flag_record'             => $first->flag_record ?? 0,
+                    'di_id'                   => $group->pluck('id')->last(),
+                ]);
+            }
+        }
+
+        DB::commit();
+
+        return redirect()->route('ds_input.generatePage', ['generate_date' => $date])
+                         ->with('success', 'Regenerate DS selesai.');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Regenerate DS gagal: ' . $e->getMessage());
+
+        return redirect()->route('ds_input.generatePage', ['generate_date' => $date])
+                         ->with('error', 'Terjadi kesalahan saat regenerate DS.');
+    }
+}
+
+
 
 }
