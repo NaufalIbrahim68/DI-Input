@@ -154,6 +154,8 @@ public function destroy($ds_number, Request $request)
     // ✅ Export PDF
   public function exportPdf(Request $request)
 {
+    ini_set('memory_limit', '2048M');
+    set_time_limit(300);
     $tanggal = $request->input('tanggal'); // ambil dari query string ?tanggal=YYYY-MM-DD
 
     $query = DsInput::query();
@@ -162,17 +164,25 @@ public function destroy($ds_number, Request $request)
         $query->whereDate('di_received_date_string', $tanggal);
     } else {
         // kalau tidak ada input, pakai tanggal hari ini
-        $tanggal = null;
+        $tanggal = Carbon::now()->format('Y-m-d');
+        $query->whereDate('di_received_date_string', $tanggal);
     }
 
     $dsInputs = $query->orderBy('ds_number')->get();
+
+    if ($dsInputs->count() > 500) {
+            return back()->with('error', 'Data terlalu banyak (' . $dsInputs->count() . ' baris). Mohon filter tanggal yang lebih spesifik.');
+        }
 
     $pdf = Pdf::loadView('Ds_Input.pdf', [
             'dsInputs' => $dsInputs,
             'tanggal'  => $tanggal,
         ])
         ->setOptions([
-            'isRemoteEnabled' => true,
+                'isRemoteEnabled' => true,
+                'isHtml5ParserEnabled' => true,
+                'dpi' => 96, 
+                'defaultFont' => 'sans-serif'
         ])
         ->setPaper('a4', 'landscape');
 
