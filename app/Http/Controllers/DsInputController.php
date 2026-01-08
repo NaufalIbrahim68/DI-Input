@@ -171,6 +171,9 @@ public function destroy($ds_number, Request $request)
             'dsInputs' => $dsInputs,
             'tanggal'  => $tanggal,
         ])
+        ->setOptions([
+            'isRemoteEnabled' => true,
+        ])
         ->setPaper('a4', 'landscape');
 
     // bikin nama file sesuai kondisi tanggal
@@ -405,7 +408,5 @@ public function regenerate(Request $request)
                          ->with('error', 'Terjadi kesalahan saat regenerate DS.');
     }
 }
-
-
 
 }

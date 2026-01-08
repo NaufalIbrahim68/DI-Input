@@ -41,16 +41,17 @@
     <table>
         <thead>
             <tr>
-                <th>DS Number</th>
-                <th>Gate</th>
-                <th>Supplier Part Number</th>
-                <th>DI Type</th>
-                <th>Received Date</th>
-                <th>Received Time</th>
-                <th>Qty</th>
-                <th>Qty Prep</th>
-                <th>Qty Delivery</th>
-                <th>DN Number</th>
+                <th style="text-align: center;">DS Number</th>
+                <th style="text-align: center;">Gate</th>
+                <th style="text-align: center;">Supplier Part Number</th>
+                <th style="text-align: center;">DI Type</th>
+                <th style="text-align: center;">Received Date</th>
+                <th style="text-align: center;">Received Time</th>
+                <th style="text-align: center;">Qty</th>
+                <th style="text-align: center;">Qty Prep</th>
+                <th style="text-align: center;">Qty Delivery</th>
+                <th style="text-align: center;">DN Number</th>
+                <th style="text-align: center;">QR Code</th>
             </tr>
         </thead>
         <tbody>
@@ -58,27 +59,30 @@
                     <tr>
                         <td>{{ $ds->ds_number }}</td>
                         <td>{{ $ds->gate }}</td>
-                        <td>{{ $ds->supplier_part_number }}</td>
-                        <td>{{ $ds->di_type }}</td>
-                        <td>{{ $ds->di_received_date_string
+                        <td style="text-align: center;">{{ $ds->supplier_part_number }}</td>
+                        <td style="text-align: center;">{{ $ds->di_type }}</td>
+                        <td style="text-align: center;">{{ $ds->di_received_date_string
                 ? \Carbon\Carbon::parse($ds->di_received_date_string)->format('d-m-Y')
                 : '-' }}</td>
-                        <td>{{ $ds->di_received_time ?? '-' }}</td>
-                        <td>{{ $ds->qty }}</td>
+                        <td style="text-align: center;">{{ $ds->di_received_time ?? '-' }}</td>
+                        <td style="text-align: center;">{{ $ds->qty }}</td>
 
-                        <td class="text-black">
+                        <td class="text-black" style="text-align: center;">
                             {{ ($ds->qty_prep ?? 0) > 0 ? $ds->qty_prep : '' }}
                         </td>
-                        <td class="text-black">
+                        <td class="text-black" style="text-align: center;">
                             {{ ($ds->qty_agv ?? 0) > 0 ? $ds->qty_agv : '' }}
                         </td>
-                        <td class="text-black">
+                        <td class="text-black" style="text-align: center;">
                             {{ ($ds->dn_number ?? 0) > 0 ? $ds->dn_number : '' }}
+                        </td>
+                        <td style="text-align: center;">
+                            <img src="data:image/svg+xml;base64,{{ base64_encode(SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(100)->generate($ds->ds_number)) }}" width="100">
                         </td>
                     </tr>
             @empty
                 <tr>
-                    <td colspan="10" style="text-align: center;">Tidak ada data</td>
+                    <td colspan="11" style="text-align: center;">Tidak ada data</td>
                 </tr>
             @endforelse
         </tbody>
