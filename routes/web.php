@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\DiInputController;
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\DsInputController;
 
@@ -33,16 +32,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
 
     // ===============================
-// 📦 DI INPUT
+// 📦 DI INPUT (uses DeliveryController)
 // ===============================
 Route::prefix('DI_Input')->name('DI_Input.')->group(function () {
-    Route::get('/', [DiInputController::class, 'index'])->name('index');
-    Route::get('/create', [DiInputController::class, 'create'])->name('form');
-    Route::post('/store', [DiInputController::class, 'store'])->name('store');
-    Route::get('/{id}/edit', [DiInputController::class, 'edit'])->name('edit');   
-    Route::put('/{id}', [DiInputController::class, 'update'])->name('update');
-    Route::delete('/{id}', [DiInputController::class, 'destroy'])->name('destroy'); 
-    Route::post('/import', [DiInputController::class, 'import'])->name('import');
+    Route::get('/', [DeliveryController::class, 'index'])->name('index');
+    Route::get('/import-form', fn() => view('DI_Input.import'))->name('form');
+    Route::post('/import', [DeliveryController::class, 'import'])->name('import');
+    Route::get('/{di_no}', [DeliveryController::class, 'show'])->name('show');
+    Route::get('/{di_no}/edit', [DeliveryController::class, 'edit'])->name('edit');   
+    Route::put('/{di_no}', [DeliveryController::class, 'update'])->name('update');
+    Route::delete('/{di_no}', [DeliveryController::class, 'destroy'])->name('destroy'); 
 });
 
 // ===============================
