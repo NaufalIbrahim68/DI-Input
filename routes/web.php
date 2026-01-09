@@ -36,6 +36,7 @@ Route::middleware(['auth'])->group(function () {
 // ===============================
 Route::prefix('DI_Input')->name('DI_Input.')->group(function () {
     Route::get('/', [DeliveryController::class, 'index'])->name('index');
+    Route::get('/datatable', [DeliveryController::class, 'datatable'])->name('datatable');
     Route::get('/import-form', fn() => view('DI_Input.import'))->name('form');
     Route::post('/import', [DeliveryController::class, 'import'])->name('import');
     Route::get('/{di_no}', [DeliveryController::class, 'show'])->name('show');

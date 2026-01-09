@@ -66,8 +66,96 @@ class DeliveryController extends Controller
 
     public function index()
     {
-        $data = DiInputModel::all();
-        return view('DI_Input.index', ['data' => $data]);
+        // Tidak perlu load semua data, DataTables akan request via AJAX
+        return view('DI_Input.index');
+    }
+
+    /**
+     * Server-side processing untuk DataTables
+     */
+    public function datatable(Request $request)
+    {
+        $draw = $request->input('draw', 1);
+        $start = $request->input('start', 0);
+        $length = $request->input('length', 10);
+        $searchValue = $request->input('search.value', '');
+        $orderColumnIndex = $request->input('order.0.column', 0);
+        $orderDirection = $request->input('order.0.dir', 'asc');
+
+        // Kolom yang bisa di-sort (sesuai urutan di thead)
+        $columns = [
+            'id',           // 0 - No (menggunakan id untuk sorting)
+            'di_no',        // 1
+            'gate',         // 2
+            'po_number',    // 3
+            'supplier_part_number', // 4
+            'baan_pn',      // 5
+            'visteon_pn',   // 6
+            'supplier_part_number_desc', // 7
+            'qty',          // 8
+            'di_type',      // 9
+            'di_received_date_string', // 10
+            'di_received_time' // 11
+        ];
+
+        $orderColumn = $columns[$orderColumnIndex] ?? 'id';
+
+        // Query dasar
+        $query = DiInputModel::query();
+
+        // Total records tanpa filter
+        $totalRecords = DiInputModel::count();
+
+        // Apply search filter
+        if (!empty($searchValue)) {
+            $query->where(function ($q) use ($searchValue) {
+                $q->where('di_no', 'like', "%{$searchValue}%")
+                  ->orWhere('gate', 'like', "%{$searchValue}%")
+                  ->orWhere('po_number', 'like', "%{$searchValue}%")
+                  ->orWhere('supplier_part_number', 'like', "%{$searchValue}%")
+                  ->orWhere('baan_pn', 'like', "%{$searchValue}%")
+                  ->orWhere('visteon_pn', 'like', "%{$searchValue}%")
+                  ->orWhere('supplier_part_number_desc', 'like', "%{$searchValue}%")
+                  ->orWhere('di_type', 'like', "%{$searchValue}%");
+            });
+        }
+
+        // Total filtered records
+        $filteredRecords = $query->count();
+
+        // Apply ordering dan pagination
+        $data = $query->orderBy($orderColumn, $orderDirection)
+                      ->skip($start)
+                      ->take($length)
+                      ->get();
+
+        // Format data untuk DataTables
+        $formattedData = [];
+        foreach ($data as $index => $row) {
+            $formattedData[] = [
+                'DT_RowIndex' => $start + $index + 1,
+                'di_no' => $row->di_no ?? '-',
+                'gate' => $row->gate ?? '-',
+                'po_number' => $row->po_number ?? '-',
+                'supplier_part_number' => $row->supplier_part_number ?? '-',
+                'baan_pn' => $row->baan_pn ?? '-',
+                'visteon_pn' => $row->visteon_pn ?? '-',
+                'supplier_part_number_desc' => $row->supplier_part_number_desc ?? '-',
+                'qty' => $row->qty ?? '-',
+                'di_type' => $row->di_type ?? '-',
+                'di_received_date_string' => $row->di_received_date_string 
+                    ? Carbon::parse($row->di_received_date_string)->format('d-m-Y') 
+                    : '-',
+                'di_received_time' => $row->di_received_time ?? '-',
+            ];
+        }
+
+        return response()->json([
+            'draw' => intval($draw),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $filteredRecords,
+            'data' => $formattedData
+        ]);
     }
 
    public function import(Request $request)

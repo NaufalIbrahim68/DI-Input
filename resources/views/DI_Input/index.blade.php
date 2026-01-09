@@ -5,6 +5,17 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/3.0.3/css/responsive.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.bootstrap5.min.css">
 
+    <style>
+        /* Border untuk setiap cell di tabel */
+        #example th,
+        #example td {
+            border: 1px solid #dee2e6 !important;
+        }
+        #example {
+            border-collapse: collapse !important;
+        }
+    </style>
+
     <div class="container-fluid">
 
         <div class="bg-white p-4 shadow rounded">
@@ -57,28 +68,10 @@
                             <th class="border p-2 bg-black text-white">DI Type</th>
                             <th class="border p-2 bg-black text-white">DI Received Date</th>
                             <th class="border p-2 bg-black text-white">DI Received Time</th>
-
-
                         </tr>
                     </thead>
                     <tbody class="text-xs leading-tight">
-                        @foreach($data as $index => $DI)
-                            <tr>
-                                <td class="text-black border p-2">{{ $index + 1 }}</td>
-                                <td class="text-black border p-2">{{ $DI->di_no ?? '-' }}</td>
-                                <td class="text-black border p-2">{{ $DI->gate ?? '-' }}</td>
-                                <td class="text-black border p-2">{{ $DI->po_number ?? '-' }}</td>
-                                <td class="text-black border p-2">{{ $DI->supplier_part_number ?? '-' }}</td>
-                                <td class="text-black border p-2">{{ $DI->baan_pn ?? '-' }}</td>
-                                <td class="text-black border p-2">{{ $DI->visteon_pn ?? '-' }}</td>
-                                <td class="text-black border p-2">{{ $DI->supplier_part_number_desc ?? '-' }}</td>
-                                <td class="text-black border p-2">{{ $DI->qty ?? '-' }}</td>
-                                <td class="text-black border p-2">{{ $DI->di_type ?? '-' }}</td>
-                                <td class="text-black border p-2">
-                                    {{ \Carbon\Carbon::parse($DI->di_received_date_string)->format('d-m-Y') }} </td>
-                                <td class="text-black border p-2">{{ $DI->di_received_time ?? '-' }}</td>
-                            </tr>
-                        @endforeach
+                        <!-- Data akan diload via AJAX -->
                     </tbody>
                 </table>
             </div>
@@ -105,16 +98,48 @@
             <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
             <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
 
-            <!-- Inisialisasi DataTables -->
+            <!-- Inisialisasi DataTables dengan Server-Side Processing -->
             <script>
                 $(document).ready(function () {
                     $('#example').DataTable({
-                        "columnDefs": [
-                            { "defaultContent": "", "targets": "_all" }
+                        "processing": true,
+                        "serverSide": true,
+                        "ajax": {
+                            "url": "{{ route('DI_Input.datatable') }}",
+                            "type": "GET"
+                        },
+                        "columns": [
+                            { "data": "DT_RowIndex", "orderable": false, "searchable": false },
+                            { "data": "di_no" },
+                            { "data": "gate" },
+                            { "data": "po_number" },
+                            { "data": "supplier_part_number" },
+                            { "data": "baan_pn" },
+                            { "data": "visteon_pn" },
+                            { "data": "supplier_part_number_desc" },
+                            { "data": "qty" },
+                            { "data": "di_type" },
+                            { "data": "di_received_date_string" },
+                            { "data": "di_received_time" }
                         ],
                         "pageLength": 10,
                         "responsive": true,
-                        "scrollX": true
+                        "scrollX": true,
+                        "language": {
+                            "processing": "Memuat data...",
+                            "search": "Cari:",
+                            "lengthMenu": "Tampilkan _MENU_ data",
+                            "info": "Menampilkan _START_ - _END_ dari _TOTAL_ data",
+                            "infoEmpty": "Tidak ada data",
+                            "infoFiltered": "(difilter dari _MAX_ total data)",
+                            "zeroRecords": "Tidak ditemukan data yang cocok",
+                            "paginate": {
+                                "first": "«",
+                                "last": "»",
+                                "next": "›",
+                                "previous": "‹"
+                            }
+                        }
                     });
                 });
             </script>
