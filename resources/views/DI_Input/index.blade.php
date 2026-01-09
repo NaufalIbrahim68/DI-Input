@@ -57,17 +57,17 @@
                     <thead class="bg-dark-100 text-xs">
                         <tr>
                             <th class="border p-2 bg-black text-white">No</th>
-                            <th class="border p-2 bg-black text-white">DI No</th>
-                            <th class="border p-2 bg-black text-white">Gate</th>
-                            <th class="border p-2 bg-black text-white">PO Number</th>
-                            <th class="border p-2 bg-black text-white">Supplier Part Number</th>
-                            <th class="border p-2 bg-black text-white">BAAN PN</th>
-                            <th class="border p-2 bg-black text-white">Visteon PN</th>
-                            <th class="border p-2 bg-black text-white">Part Desc</th>
-                            <th class="border p-2 bg-black text-white">Qty</th>
-                            <th class="border p-2 bg-black text-white">DI Type</th>
-                            <th class="border p-2 bg-black text-white">DI Received Date</th>
-                            <th class="border p-2 bg-black text-white">DI Received Time</th>
+                            <th class="border p-2 bg-black text-white text-center">DI No</th>
+                            <th class="border p-2 bg-black text-white text-center">Gate</th>
+                            <th class="border p-2 bg-black text-white text-center">PO Number</th>
+                            <th class="border p-2 bg-black text-white text-center">Supplier Part Number</th>
+                            <th class="border p-2 bg-black text-white text-center">BAAN PN</th>
+                            <th class="border p-2 bg-black text-white text-center">Visteon PN</th>
+                            <th class="border p-2 bg-black text-white text-center">Supplier Part Desc</th>
+                            <th class="border p-2 bg-black text-white text-center">Qty</th>
+                            <th class="border p-2 bg-black text-white text-center">DI Type</th>
+                            <th class="border p-2 bg-black text-white text-center">Received Date</th>
+                            <th class="border p-2 bg-black text-white text-center">Received Time</th>
                         </tr>
                     </thead>
                     <tbody class="text-xs leading-tight">
