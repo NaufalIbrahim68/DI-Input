@@ -22,22 +22,77 @@ class DsInputController extends Controller
 public function index(Request $request)
 {
     $selectedDate = $request->input('tanggal');
+    $gate = $request->input('gate');
+    $diType = $request->input('di_type');
+    $supplierPartNumber = $request->input('supplier_part_number');
+    $statusPreparation = $request->input('status_preparation');
+    $statusDelivery = $request->input('status_delivery');
 
     $query = DsInput::query();
 
     if ($selectedDate) {
         $query->whereDate('di_received_date_string', $selectedDate);
     }
+    
+    if ($gate) {
+        $query->where('gate', 'like', '%' . $gate . '%');
+    }
+    
+    if ($diType) {
+        $query->where('di_type', 'like', '%' . $diType . '%');
+    }
+    
+    if ($supplierPartNumber) {
+        $query->where('supplier_part_number', 'like', '%' . $supplierPartNumber . '%');
+    }
+
+    if ($statusPreparation) {
+        if ($statusPreparation == 'Completed') {
+            $query->where('flag_prep', 1)->where(function($q) {
+                $q->whereRaw('COALESCE(qty_prep, 0) >= COALESCE(qty, 0)');
+            });
+        } elseif ($statusPreparation == 'Over') {
+            $query->where(function($q) {
+                $q->whereNull('flag_prep')->orWhere('flag_prep', '!=', 1);
+            })->whereRaw('COALESCE(qty_prep, 0) >= COALESCE(qty, 0)');
+        } elseif ($statusPreparation == 'Minus') {
+            $query->whereRaw('COALESCE(qty_prep, 0) < COALESCE(qty, 0)');
+        }
+    }
+
+    if ($statusDelivery) {
+        if ($statusDelivery == 'Completed') {
+            $query->where('flag_agv', 1);
+        } elseif ($statusDelivery == 'Partial') {
+            $query->where(function ($q) {
+                $q->whereNull('flag_agv')->orWhere('flag_agv', 0);
+            });
+        }
+    }
 
     // Hitung total sebelum paginate
     $total = $query->count();
 
-    // Baru lakukan paginate (query clone biar tidak "terpotong")
-    $dsInputs = $query->orderBy('ds_number')
-        ->paginate(10)
-        ->withQueryString(); // ⬅ biar ?tanggal tetap ada di link pagination
+    // Pastikan menerima parameter sort yang valid.
+    $validSortColumns = ['ds_number', 'di_received_date_string', 'di_received_time'];
+    $sortCol = $request->input('sort_col', 'ds_number');
+    $sortDir = $request->input('sort_dir', 'asc');
 
-    return view('ds_input.index', compact('dsInputs', 'selectedDate', 'total'));
+    // Default column handling
+    if (!in_array($sortCol, $validSortColumns)) {
+        $sortCol = 'ds_number';
+    }
+
+    if (!in_array(strtolower($sortDir), ['asc', 'desc'])) {
+        $sortDir = 'asc';
+    }
+
+    // Lakukan paginate dan simpan current status di links
+    $dsInputs = $query->orderBy($sortCol, $sortDir)
+        ->paginate(10)
+        ->withQueryString(); // ⬅ biar semua filter dan sort tetap ada di link pagination
+
+    return view('ds_input.index', compact('dsInputs', 'selectedDate', 'total', 'sortCol', 'sortDir'));
 }
 
     // ✅ Import DS dari Excel

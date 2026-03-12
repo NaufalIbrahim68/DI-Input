@@ -28,46 +28,106 @@
             </div>
         @endif
 
-        <div class="mb-3">
-            <form method="GET" action="{{ route('ds_input.index') }}">
+        <form method="GET" action="{{ route('ds_input.index') }}">
+            <!-- Filter Tanggal -->
+            <div class="mb-3">
                 <div class="d-flex align-items-center gap-2">
-                    <input type="date" name="tanggal" value="{{ request('tanggal') }}" class="form-control"
-                        style="width:200px;" required>
+                    <input type="date" name="tanggal" value="{{ request('tanggal') }}" class="form-control" style="width:200px;" required>
                     <button type="submit" class="btn btn-success">Filter Tanggal</button>
                 </div>
-            </form>
-        </div>
+            </div>
 
-    @if(!empty($selectedDate))
-    <div class="alert alert-info text-center">
-        Menampilkan data DS untuk tanggal 
-        <strong>{{ \Carbon\Carbon::parse($selectedDate)->translatedFormat('d F Y') }}</strong>,
-        total <strong>{{ $total }}</strong> data
-    </div>
-@endif
+            @if(!empty($selectedDate))
+            <div class="alert alert-info text-center">
+                Menampilkan data DS untuk tanggal 
+                <strong>{{ \Carbon\Carbon::parse($selectedDate)->translatedFormat('d F Y') }}</strong>,
+                total <strong>{{ $total }}</strong> data
+            </div>
+            @endif
 
-        <div class="d-flex gap-2 mb-3">
-            <a href="{{ route('ds_input.export.pdf', ['tanggal' => request('tanggal')]) }}" class="btn btn-danger btn-sm">
-                <i class="fas fa-file-pdf me-1"></i> Export PDF
-            </a>
-            <a href="{{ route('ds_input.export.excel', ['tanggal' => request('tanggal')]) }}"
-                class="btn btn-success btn-sm">
-                <i class="fas fa-file-excel me-1"></i> Export Excel
-            </a>
-           
-        </div>
+            <!-- Export Buttons -->
+            <div class="d-flex gap-2 mb-3">
+                <a href="{{ route('ds_input.export.pdf', ['tanggal' => request('tanggal')]) }}" class="btn btn-danger btn-sm">
+                    <i class="fas fa-file-pdf me-1"></i> Export PDF
+                </a>
+                <a href="{{ route('ds_input.export.excel', ['tanggal' => request('tanggal')]) }}" class="btn btn-success btn-sm">
+                    <i class="fas fa-file-excel me-1"></i> Export Excel
+                </a>
+            </div>
+
+            <!-- Filter Table -->
+            <div class="mb-3 bg-light p-2 rounded border">
+                <div class="row g-2 align-items-center">
+                    <div class="col-auto">
+                        <input type="text" name="gate" value="{{ request('gate') }}" class="form-control form-control-sm" placeholder="Gate" style="width:120px;">
+                    </div>
+                    <div class="col-auto">
+                        <input type="text" name="di_type" value="{{ request('di_type') }}" class="form-control form-control-sm" placeholder="DI Type" style="width:120px;">
+                    </div>
+                    <div class="col-auto">
+                        <input type="text" name="supplier_part_number" value="{{ request('supplier_part_number') }}" class="form-control form-control-sm" placeholder="Supplier Part No" style="width:150px;">
+                    </div>
+                    <div class="col-auto">
+                        <select name="status_preparation" class="form-select form-select-sm" style="width:160px;">
+                            <option value="">Status Prep (All)</option>
+                            <option value="Completed" {{ request('status_preparation') == 'Completed' ? 'selected' : '' }}>Completed</option>
+                            <option value="Over" {{ request('status_preparation') == 'Over' ? 'selected' : '' }}>Over</option>
+                            <option value="Minus" {{ request('status_preparation') == 'Minus' ? 'selected' : '' }}>Minus</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <select name="status_delivery" class="form-select form-select-sm" style="width:160px;">
+                            <option value="">Status Delivery (All)</option>
+                            <option value="Completed" {{ request('status_delivery') == 'Completed' ? 'selected' : '' }}>Completed</option>
+                            <option value="Partial" {{ request('status_delivery') == 'Partial' ? 'selected' : '' }}>Partial</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                        <a href="{{ route('ds_input.index', ['tanggal' => request('tanggal')]) }}" class="btn btn-secondary btn-sm">Reset Filter</a>
+                    </div>
+                </div>
+            </div>
+        </form>
 
         <div class="table-responsive" style="overflow-x:auto; width:100%;">
             <table class="table table-bordered table-sm bg-white small">
                 <thead class="bg-black text-white">
                     <tr>
                         <th>No</th>
-                        <th>DS Number</th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_col' => 'ds_number', 'sort_dir' => ($sortCol === 'ds_number' && $sortDir === 'asc' ? 'desc' : 'asc')]) }}" class="text-white text-decoration-none">
+                                DS Number
+                                @if($sortCol === 'ds_number')
+                                    <i class="fas fa-sort-{{ $sortDir === 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                @else
+                                    <i class="fas fa-sort ms-1 opacity-50"></i>
+                                @endif
+                            </a>
+                        </th>
                         <th>Gate</th>
                         <th>DI Type</th>
                         <th>Supplier Part Number</th>
-                        <th>Received Date</th>
-                        <th>Received Time</th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_col' => 'di_received_date_string', 'sort_dir' => ($sortCol === 'di_received_date_string' && $sortDir === 'asc' ? 'desc' : 'asc')]) }}" class="text-white text-decoration-none">
+                                Received Date
+                                @if($sortCol === 'di_received_date_string')
+                                    <i class="fas fa-sort-{{ $sortDir === 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                @else
+                                    <i class="fas fa-sort ms-1 opacity-50"></i>
+                                @endif
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ request()->fullUrlWithQuery(['sort_col' => 'di_received_time', 'sort_dir' => ($sortCol === 'di_received_time' && $sortDir === 'asc' ? 'desc' : 'asc')]) }}" class="text-white text-decoration-none">
+                                Received Time
+                                @if($sortCol === 'di_received_time')
+                                    <i class="fas fa-sort-{{ $sortDir === 'asc' ? 'up' : 'down' }} ms-1"></i>
+                                @else
+                                    <i class="fas fa-sort ms-1 opacity-50"></i>
+                                @endif
+                            </a>
+                        </th>
                         <th>Qty</th>
                         <th>Qty Prep</th>
                         <th>Status Preparation</th>
